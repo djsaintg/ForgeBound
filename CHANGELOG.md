@@ -3,6 +3,76 @@
 All notable changes to **ForgeBound**. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project follows semver.
 
+## [0.3.0] — Gamma v0.3.0 · Visual & Animation Overhaul — 2026
+
+Eight bits become sixty-four, and the valley finally moves and breathes
+at the same pace as its hero.
+
+### Added
+
+- 64-bit remastered renderer: multi-tier tree canopies that sway in the wind,
+  crystalline ore veins, mossy Vale Square flagstones, pebbled dirt roads,
+  animated multi-tone water with sun glints, a plank bridge with iron bolts,
+  and a slow day/night ambience with a hero-glow vignette
+- Live engine toggle (64-bit Remastered ⇄ 8-bit Legacy) in the Settings window
+- Explorer camera: smooth follow with mouse-wheel zoom from 1.0× grand vista
+  to 3.2× close-up
+- The realm gained edges — an impassable ring of snow-capped mountain ranges
+  with drifting valley mist now encircles the world, so the compass never hides
+  playable ground and future updates can simply push the ranges back
+- Immersive interface: a full-bleed framed world viewport with the side panel
+  (Inventory, Skills, Gear) and a bottom-docked Adventurer's Log, plus a mobile
+  drawer — the compass nests in the viewport's corner, never over the map
+- A master Settings window (gear button in the side panel): camera field of
+  view, render engine, WebAudio synthesis, and save controls
+- Two Bramble Brigands (Lvl 9, 22 HP) lurking in the deep gully beyond the camp
+- Sculpted fire: the furnace is now a masonry blast furnace with chimney smoke,
+  an arched hearth and contained flames; the campfire gains a stone ring,
+  crossed end-grained logs and layered teardrop flames
+- A proper six-frame walk cycle for the hero — contact, recoil and pass poses
+  interpolated over ~500ms, with knees that bend on the lift, arms that
+  counter-swing to the legs, a torso that bobs on the down-beats, and the
+  whole rig mirrors to face west when travelling left
+- True walking gaits for cows, hens and goblins too — swinging limbs replace
+  the old vertical hop
+- Live fire lighting — the furnace and campfire are real light sources now,
+  each casting a warm additive halo (with independent flicker) that pushes
+  back the night wash and pools on the tiles around them
+- Chopped trees visibly topple, leaving a stump, a fallen trunk with growth
+  rings and scattered sawdust until regrowth; sawdust and ore sparks fly while
+  gathering
+- Combat feedback to spec: red splats dealt, blue taken, grey misses; enemies
+  flash white when struck and fade out on death; Defence XP for weathering
+  blows and Defence joins the live skill list; distinct hit, hurt, miss, kill,
+  death and bone-bury sounds; hostile red pips on the minimap; a foes-defeated
+  tally in the Gear panel
+- Seven hand-drawn SVG item icons for the livestock set — bones, raw beef,
+  steak, raw chicken, feathers, egg and fried egg
+
+### Changed
+
+- Cooked beef is now **Steak** — Cooking 15, heals 9, the best food in the realm
+- Feathers are trout bait: every trout caught consumes one feathered fly, and
+  hens drop 1–2 feathers per kill
+- Laid eggs cap at six on the ground and spoil after two minutes
+- The bank is a fixed six-column vault of 36 slots that grows a row at a time;
+  left-click withdraws one, right-click withdraws the whole stack
+- Better weapons swing faster in melee — bare hands are slowest of all
+- Foes mend their wounds while disengaged from combat
+- Defeated foes announce their loot as a single combined drop line
+- XP orbs return as skill-tinted medallions in the viewport corner; autosaves
+  no longer spam the Adventurer's Log
+- The Adventurer's Log follows the newest entry and filters by All / Skilling /
+  NPCs & Combat
+- Login screen restored to the original key art — night sky, moon, layered pine
+  hills and the crest — with the Gamma notes riding alongside
+- All third-party naming removed; the interface presents as ForgeBound's own
+
+### Fixed
+
+- The walkable buffer beyond the old palisade let players skirt the river; the
+  mountain ring seals the crossing to the bridge
+
 ## [0.2.1] — 2026
 
 The pasture & coop update.

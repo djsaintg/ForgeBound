@@ -7,11 +7,11 @@ let muted = false;
 
 function ac(): AudioContext | null {
   try {
-    if (!ctx) {
+    if (!ctx && typeof window !== "undefined") {
       const AC = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
-      ctx = new AC();
+      if (AC) ctx = new AC();
     }
-    if (ctx.state === "suspended") void ctx.resume();
+    if (ctx && ctx.state === "suspended") void ctx.resume();
     return ctx;
   } catch {
     return null;
@@ -67,24 +67,53 @@ export const sfx = {
   click() { tone(720, 0.06, { type: "square", vol: 0.04 }); },
   step() { noise(0.04, 0.025, 0, 900); },
   swing() { noise(0.09, 0.05, 0, 2400); },
-  gather() { tone(520, 0.09, { vol: 0.09 }); tone(780, 0.1, { vol: 0.08, delay: 0.06 }); },
-  splash() { noise(0.22, 0.07, 0, 1100); tone(300, 0.15, { glide: 140, vol: 0.05 }); },
-  coin() { tone(1240, 0.07, { type: "square", vol: 0.05 }); tone(1660, 0.12, { type: "square", vol: 0.05, delay: 0.06 }); },
-  smith() { noise(0.05, 0.09, 0, 3600); tone(220, 0.12, { type: "sawtooth", vol: 0.05 }); },
-  error() { tone(190, 0.16, { type: "sawtooth", vol: 0.07, glide: 120 }); },
-  moo() { tone(160, 0.4, { type: "sawtooth", vol: 0.06, glide: 110 }); tone(158, 0.4, { type: "sawtooth", vol: 0.05, delay: 0.02, glide: 105 }); },
-  hit() { noise(0.06, 0.09, 0, 1500); tone(180, 0.08, { type: "square", vol: 0.06, glide: 120 }); },
-  hurt() { tone(220, 0.14, { type: "sawtooth", vol: 0.08, glide: 140 }); },
-  kill() {
-    tone(300, 0.1, { vol: 0.08, glide: 90 });
-    noise(0.15, 0.06, 0.05, 800);
-    tone(520, 0.12, { vol: 0.06, delay: 0.09 });
+  gather() {
+    tone(520, 0.09, { vol: 0.09 });
+    tone(780, 0.1, { vol: 0.08, delay: 0.06 });
   },
-  die() { [330, 262, 196, 147].forEach((n, i) => tone(n, 0.3, { type: "triangle", vol: 0.09, delay: i * 0.12 })); },
+  splash() {
+    noise(0.22, 0.07, 0, 1100);
+    tone(300, 0.15, { glide: 140, vol: 0.05 });
+  },
+  coin() {
+    tone(1240, 0.07, { type: "square", vol: 0.05 });
+    tone(1660, 0.12, { type: "square", vol: 0.05, delay: 0.06 });
+  },
+  smith() {
+    noise(0.05, 0.09, 0, 3600);
+    tone(220, 0.12, { type: "sawtooth", vol: 0.05 });
+  },
+  error() {
+    tone(190, 0.16, { type: "sawtooth", vol: 0.07, glide: 120 });
+  },
+  moo() {
+    tone(160, 0.4, { type: "sawtooth", vol: 0.06, glide: 110 });
+    tone(158, 0.4, { type: "sawtooth", vol: 0.05, delay: 0.02, glide: 105 });
+  },
+  // Combat vocabulary (added for v0.2.0, restored in Gamma)
+  hit() {
+    noise(0.06, 0.09, 0, 3200);
+    tone(140, 0.1, { type: "square", vol: 0.06, glide: 90 });
+  },
+  hurt() {
+    tone(320, 0.16, { type: "sawtooth", vol: 0.08, glide: 140 });
+    noise(0.08, 0.05, 0, 700);
+  },
+  miss() {
+    noise(0.05, 0.03, 0, 2600);
+  },
+  kill() {
+    tone(392, 0.12, { vol: 0.09 });
+    tone(523.25, 0.12, { vol: 0.09, delay: 0.08 });
+    tone(659.25, 0.2, { vol: 0.1, delay: 0.16 });
+  },
+  death() {
+    tone(220, 0.3, { type: "sawtooth", vol: 0.09, glide: 80 });
+    tone(110, 0.5, { type: "sawtooth", vol: 0.08, delay: 0.2, glide: 55 });
+  },
   bury() {
-    noise(0.12, 0.06, 0, 600);
-    tone(392, 0.14, { vol: 0.06, delay: 0.05 });
-    tone(523, 0.2, { vol: 0.06, delay: 0.16 });
+    tone(660, 0.12, { type: "sine", vol: 0.07 });
+    tone(880, 0.18, { type: "sine", vol: 0.06, delay: 0.08 });
   },
   levelUp() {
     const notes = [523.25, 659.25, 783.99, 1046.5];

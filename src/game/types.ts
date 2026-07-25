@@ -1,8 +1,8 @@
 export type SkillId =
-  | "attack" | "hitpoints" | "mining" | "strength" | "agility" | "smithing"
-  | "defence" | "herblore" | "fishing" | "ranged" | "crafting" | "cooking"
-  | "prayer" | "woodcutting" | "magic" | "fletching" | "runecrafting"
-  | "construction" | "dungeoneering" | "slayer" | "farming" | "thieving";
+  | "attack" | "hitpoints" | "mining" | "strength" | "agility" | "smithing" | "defence"
+  | "herblore" | "fishing" | "ranged" | "crafting" | "cooking" | "prayer" | "woodcutting"
+  | "magic" | "fletching" | "runecrafting" | "construction" | "dungeoneering" | "slayer"
+  | "farming" | "thieving";
 
 export type ItemId =
   | "coins" | "logs" | "oak_logs"
@@ -12,30 +12,29 @@ export type ItemId =
   | "bronze_dagger" | "iron_dagger" | "steel_dagger"
   | "bronze_axe" | "iron_axe" | "steel_axe" | "mithril_axe"
   | "bronze_pick" | "iron_pick" | "steel_pick" | "mithril_pick"
-  | "fly_rod" | "bones" | "big_bones"
-  | "raw_beef" | "steak" | "raw_chicken" | "cooked_chicken"
-  | "feather" | "egg" | "fried_egg";
+  | "fly_rod"
+  // Combat & Livestock Drops
+  | "bones" | "raw_beef" | "cooked_beef" | "raw_chicken" | "cooked_chicken"
+  | "feathers" | "egg" | "fried_egg" | "bronze_sword" | "bronze_platebody";
 
-export type ToolSlot = "weapon" | "axe" | "pick" | "rod";
+export type ToolSlot = "weapon" | "axe" | "pick" | "rod" | "armor";
 
 export type ItemCat =
-  | "currency" | "resource" | "ore" | "raw_fish" | "raw_meat" | "food" | "bar"
-  | "weapon" | "axe" | "pick" | "rod" | "bones";
+  | "currency" | "resource" | "ore" | "raw_fish" | "raw_food" | "food" | "bone"
+  | "bar" | "weapon" | "armor" | "axe" | "pick" | "rod";
 
 export interface ItemDef {
   id: ItemId;
   name: string;
   cat: ItemCat;
   stackable: boolean;
-  price: number; // shop buy price; sell = 55%
+  price: number;
   heal?: number;
-  tier?: number; // tool tier: 1 bronze, 2 iron, 3 steel, 4 mithril
-  prayXp?: number; // XP granted when buried (bones)
+  tier?: number; // 1 bronze, 2 iron, 3 steel, 4 mithril
 }
 
 export type ResKey =
-  | "tree" | "oak" | "copper" | "tin" | "iron" | "coal" | "gold"
-  | "shrimp" | "trout";
+  | "tree" | "oak" | "copper" | "tin" | "iron" | "coal" | "gold" | "shrimp" | "trout";
 
 export interface ResourceDef {
   key: ResKey;
@@ -45,9 +44,8 @@ export interface ResourceDef {
   xp: number;
   level: number;
   tool?: "axe" | "pick" | "rod";
-  bait?: ItemId; // consumed per catch (a feathered fly)
-  cycle: number; // ms per attempt at tier 1 / bare hands
-  respawn: number; // ms
+  cycle: number;
+  respawn: number;
 }
 
 export type StationId = "furnace" | "anvil" | "fire";
@@ -55,6 +53,7 @@ export type StationId = "furnace" | "anvil" | "fire";
 export type RecipeId =
   | "smelt_bronze" | "smelt_iron" | "smelt_steel"
   | "smith_bronze_dagger" | "smith_iron_dagger" | "smith_steel_dagger"
+  | "smith_bronze_sword" | "smith_bronze_platebody"
   | "cook_shrimp" | "cook_trout" | "cook_beef" | "cook_chicken" | "cook_egg";
 
 export interface RecipeDef {
@@ -70,37 +69,99 @@ export interface RecipeDef {
 }
 
 export type ChatKind = "sys" | "info" | "npc" | "err";
-export interface ChatMsg { id: number; kind: ChatKind; text: string; }
 
-export type EnemyTypeId = "goblin" | "brigand" | "cow" | "chicken";
-export interface EnemyEnt {
-  type: EnemyTypeId;
-  hp: number;
-  x: number; y: number;   // live position (tiles, float)
-  hx: number; hy: number; // home tile
-  dx: number; dy: number; // wander target
-  nextMove: number;
-  nextAttack: number;
-  deathAt: number; // 0 while alive
-  flash: number;   // last hit timestamp (white flash)
-  nextLay: number; // chickens: next egg timestamp
+export interface ChatMsg {
+  id: number;
+  kind: ChatKind;
+  text: string;
 }
-export interface Splat { x: number; y: number; n: number; kind: "deal" | "take"; t: number; }
 
-export interface XpEvent { id: number; skill: SkillId; amount: number; t: number; }
-export interface FloatText { x: number; y: number; text: string; color: string; t: number; }
-export interface GroundEgg { x: number; y: number; t: number; }
+export interface XpEvent {
+  id: number;
+  skill: SkillId;
+  amount: number;
+  t: number;
+}
 
-export interface DepletedRecord { t: number; kind?: "tree" | "oak"; }
+export interface FloatText {
+  x: number;
+  y: number;
+  text: string;
+  color: string;
+  t: number;
+}
+
+export interface CowEnt {
+  id: number;
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  hp: number;
+  maxHp: number;
+  respawn: number;
+  nextMove: number;
+  moo: number;
+  hit?: number;
+  diedAt?: number;
+}
+
+export interface ChickenEnt {
+  id: number;
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  hp: number;
+  maxHp: number;
+  respawn: number;
+  nextMove: number;
+  cluck: number;
+  nextEgg: number;
+  hit?: number;
+  diedAt?: number;
+}
+
+export interface GoblinEnt {
+  id: number;
+  x: number;
+  y: number;
+  dx: number;
+  dy: number;
+  hp: number;
+  maxHp: number;
+  respawn: number;
+  nextMove: number;
+  grunt: number;
+  hit?: number;
+  diedAt?: number;
+}
+
+export interface GroundItem {
+  id: number;
+  item: ItemId;
+  n: number;
+  x: number;
+  y: number;
+  t: number;
+}
 
 export type Action =
   | { kind: "gather"; x: number; y: number; res: ResKey; progress: number; cycle: number }
   | { kind: "station"; x: number; y: number; recipe: RecipeId; progress: number; cycle: number }
-  | { kind: "combat"; enemy: number; x: number; y: number; progress: number; cycle: number };
+  | { kind: "combat"; targetKind: "cow" | "chicken" | "goblin"; targetId: number; progress: number; cycle: number };
 
-export interface InvSlot { item: ItemId; n: number; }
+export interface InvSlot {
+  item: ItemId;
+  n: number;
+}
 
-export interface LevelUp { skill: SkillId; level: number; }
+export interface LevelUp {
+  skill: SkillId;
+  level: number;
+}
+
+export type GraphicsMode = "64bit" | "8bit";
 
 export interface GameState {
   version: number;
@@ -116,17 +177,22 @@ export interface GameState {
   y: number;
   path: { x: number; y: number }[];
   action: Action | null;
-  pendingStation: { kind: "craft" | "bank" | "shop" | "egg"; station?: StationId; x: number; y: number } | null;
+  pendingStation: { kind: "craft" | "bank" | "shop"; station?: StationId; x: number; y: number } | null;
   stationUI: { station: StationId; x: number; y: number } | null;
-  depleted: Record<string, DepletedRecord>;
+  depleted: Record<string, number>;
   chat: ChatMsg[];
   xpEvents: XpEvent[];
   floats: FloatText[];
   levelUps: LevelUp[];
   bankOpen: boolean;
   shopOpen: boolean;
-  enemies: EnemyEnt[];
-  splats: Splat[];
-  eggs: GroundEgg[];
+  settingsOpen: boolean;
+  cows: CowEnt[];
+  chickens: ChickenEnt[];
+  goblins: GoblinEnt[];
+  groundItems: GroundItem[];
   counters: { gathered: number; made: number; kills: number };
+  // Gamma v0.3.0 Enhancements
+  zoom: number;
+  graphicsMode: GraphicsMode;
 }

@@ -6,7 +6,7 @@ import { SKILLS, fmt, levelForXp, progressIntoLevel, totalLevel } from "../game/
 import { ItemIcon } from "./ItemIcon";
 
 const SLOT_LABEL: Record<ToolSlot, string> = {
-  weapon: "Weapon", axe: "Axe", pick: "Pickaxe", rod: "Fishing rod",
+  weapon: "Weapon", axe: "Axe", pick: "Pickaxe", rod: "Fishing rod", armor: "Armor",
 };
 
 export function SidePanels({ api, g }: { api: GameApi; g: GameState }) {
@@ -34,6 +34,16 @@ export function SidePanels({ api, g }: { api: GameApi; g: GameState }) {
             {label.toUpperCase()}
           </button>
         ))}
+        <button
+          onClick={() => api.openSettings()}
+          title="Engine settings — zoom, renderer & audio"
+          className="flex items-center px-2.5 text-[#8a7a52] transition-colors hover:bg-[#1d1610] hover:text-[#f0c858]"
+        >
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin-slow">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </button>
       </div>
 
       <div className="chat-scroll min-h-0 flex-1 overflow-y-auto p-2">
@@ -82,7 +92,7 @@ function Inventory({ api, g }: { api: GameApi; g: GameState }) {
         ))}
       </div>
       <p className="mt-2 text-[10.5px] leading-snug text-[#6a5a3a]">
-        Click food to eat it and tools to wield them. Right-click drops.
+        Click food to eat it, bones to bury them, tools to wield them. Right-click drops.
       </p>
     </div>
   );
@@ -145,7 +155,7 @@ function Skills({ g }: { g: GameState }) {
 }
 
 function Gear({ api, g }: { api: GameApi; g: GameState }) {
-  const slots: ToolSlot[] = ["weapon", "axe", "pick", "rod"];
+  const slots: ToolSlot[] = ["weapon", "armor", "axe", "pick", "rod"];
   return (
     <div className="flex flex-col gap-1.5">
       {slots.map((slot) => {

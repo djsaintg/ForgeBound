@@ -1,10 +1,19 @@
 import { MAP_W, MAP_H, walkable } from "./map";
 
-export interface Pt { x: number; y: number; }
+export interface Pt {
+  x: number;
+  y: number;
+}
 
 const DIRS = [
-  { x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 },
-  { x: 1, y: -1 }, { x: 1, y: 1 }, { x: -1, y: 1 }, { x: -1, y: -1 },
+  { x: 0, y: -1 },
+  { x: 1, y: 0 },
+  { x: 0, y: 1 },
+  { x: -1, y: 0 },
+  { x: 1, y: -1 },
+  { x: 1, y: 1 },
+  { x: -1, y: 1 },
+  { x: -1, y: -1 },
 ];
 
 /**
@@ -25,17 +34,17 @@ export function findPath(sx: number, sy: number, tx: number, ty: number): Pt[] |
     }
   }
   if (targets.size === 0) return null;
-
   const prev = new Int32Array(MAP_W * MAP_H).fill(-1);
   const start = key(sx, sy);
   const queue: number[] = [start];
   prev[start] = start;
   let found = -1;
-
-  outer:
-  while (queue.length) {
+  outer: while (queue.length) {
     const cur = queue.shift()!;
-    if (targets.has(cur) && cur !== start) { found = cur; break; }
+    if (targets.has(cur) && cur !== start) {
+      found = cur;
+      break;
+    }
     const cx = cur % MAP_W, cy = Math.floor(cur / MAP_W);
     for (const d of DIRS) {
       const nx = cx + d.x, ny = cy + d.y;
@@ -48,11 +57,13 @@ export function findPath(sx: number, sy: number, tx: number, ty: number): Pt[] |
         if (!walkable(cx + d.x, cy) || !walkable(cx, cy + d.y)) continue;
       }
       prev[nk] = cur;
-      if (targets.has(nk)) { found = nk; break outer; }
+      if (targets.has(nk)) {
+        found = nk;
+        break outer;
+      }
       queue.push(nk);
     }
   }
-
   if (found === -1) return null;
   const path: Pt[] = [];
   let cur = found;

@@ -179,7 +179,7 @@ export function LoginScreen({ hasSave, onStart }: { hasSave: boolean; onStart: (
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && enter(!hasSave ? false : true)}
+                onKeyDown={(e) => e.key === "Enter" && enter(hasSave)}
                 maxLength={14}
                 spellCheck={false}
                 className="w-full rounded-sm border border-[#4a3a20] bg-[#0d0a07] px-3 py-2.5 text-[15px] text-[#f0e6cc] outline-none transition-all focus:border-[#d8b25c] focus:shadow-[0_0_0_1px_rgba(216,178,92,0.3),0_0_18px_rgba(216,178,92,0.15)]"
@@ -215,10 +215,16 @@ export function LoginScreen({ hasSave, onStart }: { hasSave: boolean; onStart: (
             </button>
             {notesOpen && (
               <div className="rounded-sm border border-[#2a2415] bg-[#0f0c08] p-3 text-[11.5px] leading-relaxed text-[#a89c80]" style={{ animation: "fadeIn 0.2s ease-out" }}>
-                <p className="mb-1 font-bold text-[#c8b070]">Live in v0.2.1</p>
-                <p>10 skills including melee combat · goblins, brigands, cows &amp; hens with loot and bone-burying Prayer · feather-lure trout fishing and egg frying · 28-slot inventory · bank, shop &amp; gear tiers · bottom-anchored adventurer's log · autosave to localStorage.</p>
+                <p className="mb-1 font-bold text-[#c8b070]">Live in Gamma v0.3.0 — the Visual &amp; Animation Overhaul</p>
+                <p>
+                  64-bit remastered renderer with a live 8-bit⇄64-bit toggle · explorer camera zoom on the mouse wheel ·
+                  a mountain-ringed realm holding Grublin Gully's goblins &amp; brigands · cows, hens, laid eggs,
+                  feather-lure trout and steak · melee combat with hitsplats, loot drops and bone-burying Prayer ·
+                  resizable glass log &amp; backpack panels (or dock them below the map) · 10 live skills · bank, shop
+                  &amp; gear tiers · autosave to localStorage.
+                </p>
                 <p className="mb-1 mt-2 font-bold text-[#c8b070]">Roadmap</p>
-                <p>Combat &amp; NPCs · quests · more skills · a bigger map · music.</p>
+                <p>Quests · more skills · an original soundtrack · pushing the mountains back for a bigger map.</p>
                 <p className="mb-1 mt-2 font-bold text-[#c8b070]">Taking it offline</p>
                 <p>Run <code className="rounded bg-black/50 px-1 text-[#d8b25c]">npm run build</code> — the whole game compiles to one <code className="rounded bg-black/50 px-1 text-[#d8b25c]">dist/index.html</code>. Copy that file anywhere (laptop, phone, USB stick) and open it. No server, no internet, ever.</p>
                 <p className="mt-2 text-[#6a5a3a]">Inspired by classic browser MMOs. All names, art and sounds here are original.</p>
@@ -226,7 +232,7 @@ export function LoginScreen({ hasSave, onStart }: { hasSave: boolean; onStart: (
             )}
           </div>
           <div className="border-t border-[#2a2415] px-5 py-2.5 text-center text-[10px] tracking-wide text-[#5a4c32]">
-            v0.2.1 · single-player · progress lives in this browser
+            v0.3.0 · single-player · progress lives in this browser
           </div>
         </div>
       </div>

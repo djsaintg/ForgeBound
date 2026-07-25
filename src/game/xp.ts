@@ -8,9 +8,9 @@ import type { SkillId } from "./types";
 const XP_TABLE: number[] = [0]; // index = level - 1
 {
   let acc = 0;
-  for (let n = 1; n <= 98; n++) {
-    acc += Math.floor((n + 300 * Math.pow(2, n / 7)) / 4);
-    XP_TABLE.push(acc);
+  for (let n = 1; n <= 99; n++) {
+    acc += Math.floor(n + 300 * Math.pow(2, n / 7));
+    XP_TABLE.push(Math.floor(acc / 4));
   }
 }
 
@@ -32,7 +32,11 @@ export function progressIntoLevel(xp: number): { pct: number; cur: number; next:
   if (lvl >= 99) return { pct: 1, cur: xp, next: xp };
   const base = xpForLevel(lvl);
   const next = xpForLevel(lvl + 1);
-  return { pct: Math.min(1, (xp - base) / (next - base)), cur: xp - base, next: next - base };
+  return {
+    pct: Math.min(1, Math.max(0, (xp - base) / (next - base))),
+    cur: xp - base,
+    next: next - base,
+  };
 }
 
 export const MAX_XP = XP_TABLE[98];
@@ -45,35 +49,35 @@ export interface SkillMeta {
   impl: boolean;
 }
 
-/** Classic skill list order, with the five live skills flagged. */
+/** Classic skill list order, with active skilling & combat flags. */
 export const SKILLS: SkillMeta[] = [
-  { id: "attack", name: "Attack", icon: "⚔", color: "#a83232", impl: true },
-  { id: "hitpoints", name: "Constitution", icon: "♥", color: "#c24848", impl: true },
-  { id: "mining", name: "Mining", icon: "⛏", color: "#8a8f98", impl: true },
-  { id: "strength", name: "Strength", icon: "👊", color: "#4f8f3a", impl: true },
-  { id: "agility", name: "Agility", icon: "➤", color: "#3a5f8f", impl: false },
-  { id: "smithing", name: "Smithing", icon: "🔨", color: "#c98a3a", impl: true },
-  { id: "defence", name: "Defence", icon: "🛡", color: "#7a8fc2", impl: true },
-  { id: "herblore", name: "Herblore", icon: "🌿", color: "#3a8f5f", impl: false },
-  { id: "fishing", name: "Fishing", icon: "🐟", color: "#4a9db8", impl: true },
-  { id: "ranged", name: "Ranged", icon: "🏹", color: "#5f8f3a", impl: false },
-  { id: "crafting", name: "Crafting", icon: "✂", color: "#b89a4a", impl: false },
-  { id: "cooking", name: "Cooking", icon: "🍳", color: "#c2703a", impl: true },
-  { id: "prayer", name: "Prayer", icon: "✦", color: "#d8d2c0", impl: true },
-  { id: "woodcutting", name: "Woodcutting", icon: "🪓", color: "#6e8f3a", impl: true },
-  { id: "magic", name: "Magic", icon: "◆", color: "#5a5fc2", impl: false },
-  { id: "fletching", name: "Fletching", icon: "🪶", color: "#7a6a4a", impl: false },
-  { id: "runecrafting", name: "Runecrafting", icon: "◈", color: "#b8b05a", impl: false },
-  { id: "construction", name: "Construction", icon: "🏠", color: "#a86432", impl: false },
-  { id: "dungeoneering", name: "Dungeoneering", icon: "◎", color: "#9a5ab8", impl: false },
-  { id: "slayer", name: "Slayer", icon: "💀", color: "#6a6a72", impl: false },
-  { id: "farming", name: "Farming", icon: "🌾", color: "#5aa832", impl: false },
-  { id: "thieving", name: "Thieving", icon: "🗝", color: "#7a4a8f", impl: false },
+  { id: "attack", name: "Attack", icon: "⚔️", color: "#e05252", impl: true },
+  { id: "hitpoints", name: "Constitution", icon: "❤️", color: "#e84a4a", impl: true },
+  { id: "mining", name: "Mining", icon: "⛏️", color: "#8a9ba8", impl: true },
+  { id: "strength", name: "Strength", icon: "👊", color: "#5ea84a", impl: true },
+  { id: "agility", name: "Agility", icon: "🏃", color: "#457bd6", impl: false },
+  { id: "smithing", name: "Smithing", icon: "🔨", color: "#d19747", impl: true },
+  { id: "defence", name: "Defence", icon: "🛡️", color: "#8b9fd4", impl: true },
+  { id: "herblore", name: "Herblore", icon: "🌿", color: "#48a870", impl: false },
+  { id: "fishing", name: "Fishing", icon: "🐟", color: "#4db8cf", impl: true },
+  { id: "ranged", name: "Ranged", icon: "🏹", color: "#74a848", impl: false },
+  { id: "crafting", name: "Crafting", icon: "✂️", color: "#cca954", impl: false },
+  { id: "cooking", name: "Cooking", icon: "🍳", color: "#cf7a42", impl: true },
+  { id: "prayer", name: "Prayer", icon: "✨", color: "#e2dcc8", impl: true },
+  { id: "woodcutting", name: "Woodcutting", icon: "🪓", color: "#7ea643", impl: true },
+  { id: "magic", name: "Magic", icon: "🔮", color: "#6a70d6", impl: false },
+  { id: "fletching", name: "Fletching", icon: "🪶", color: "#8c7b57", impl: false },
+  { id: "runecrafting", name: "Runecrafting", icon: "◈", color: "#c9c263", impl: false },
+  { id: "construction", name: "Construction", icon: "🏠", color: "#ba733a", impl: false },
+  { id: "dungeoneering", name: "Dungeoneering", icon: "◎", color: "#aa63cc", impl: false },
+  { id: "slayer", name: "Slayer", icon: "💀", color: "#757580", impl: false },
+  { id: "farming", name: "Farming", icon: "🌾", color: "#6cc23e", impl: false },
+  { id: "thieving", name: "Thieving", icon: "🗝️", color: "#8a57a1", impl: false },
 ];
 
-export const SKILL_BY_ID: Record<string, SkillMeta> = Object.fromEntries(
+export const SKILL_BY_ID: Record<SkillId, SkillMeta> = Object.fromEntries(
   SKILLS.map((s) => [s.id, s])
-);
+) as Record<SkillId, SkillMeta>;
 
 export function totalLevel(xp: Record<SkillId, number>): number {
   return SKILLS.reduce((sum, s) => sum + levelForXp(xp[s.id] ?? 0), 0);

@@ -5,7 +5,7 @@ import { Minimap } from "./components/Minimap";
 import { EventFeed } from "./components/EventFeed";
 import { XpOrbs } from "./components/XpOrbs";
 import { SidePanels } from "./components/SidePanels";
-import { BankModal, ShopModal, StationModal } from "./components/Modals";
+import { BankModal, ShopModal, StationModal, SettingsModal } from "./components/Modals";
 import { LevelUpOverlay } from "./components/LevelUpOverlay";
 import { ItemIcon } from "./components/ItemIcon";
 import { hasSave, useGame } from "./game/useGame";
@@ -174,6 +174,7 @@ function GameScreen({ name, cont, onExit }: { name: string; cont: boolean; onExi
         <StationModal api={api} g={g} />
         <BankModal api={api} g={g} />
         <ShopModal api={api} g={g} />
+        <SettingsModal api={api} g={g} />
         <LevelUpOverlay api={api} g={g} />
       </div>
 

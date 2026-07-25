@@ -1,198 +1,181 @@
+import React from "react";
 import type { ItemId } from "../game/types";
 import { ITEMS } from "../game/data";
 
-const TIER_COLORS: Record<number, string> = {
-  1: "#b0763a", 2: "#9aa0a8", 3: "#ccd2da", 4: "#7a8fc8",
-};
-const ORE_COLORS: Record<string, string> = {
-  copper_ore: "#d0783f", tin_ore: "#c9cdd6", iron_ore: "#b06a3c",
-  coal: "#3a3a42", gold_ore: "#e8c040",
-};
+interface Props {
+  item: ItemId;
+  size?: "sm" | "md" | "lg" | number;
+  count?: number;
+}
 
-/** Hand-drawn 24x24 SVG icons — no external assets, works offline. */
-export function ItemIcon({ item, size = 26 }: { item: ItemId; size?: number }) {
-  const def = ITEMS[item];
-  const c = def.tier ? TIER_COLORS[def.tier] : "#aaa";
-  let inner: React.ReactNode = null;
+export const ItemIcon: React.FC<Props> = ({ item, size = "md", count }) => {
+  const def = ITEMS[item] || { name: item, cat: "resource" };
 
-  switch (item) {
-    case "coins":
-      inner = (
-        <>
-          <ellipse cx="12" cy="15.5" rx="7" ry="3.6" fill="#a8802e" />
-          <ellipse cx="12" cy="13" rx="7" ry="3.6" fill="#d8a840" />
-          <ellipse cx="12" cy="10" rx="7" ry="3.6" fill="#f0c858" stroke="#a8802e" strokeWidth="1" />
-          <text x="12" y="12.6" textAnchor="middle" fontSize="5.4" fontWeight="900" fill="#8a6420">¤</text>
-        </>
-      );
-      break;
-    case "logs":
-    case "oak_logs": {
-      const dark = item === "oak_logs";
-      inner = (
-        <>
-          <rect x="4" y="9" width="16" height="8" rx="3.4" fill={dark ? "#5c3f22" : "#7a5a2e"} transform="rotate(-18 12 13)" />
-          <ellipse cx="6.6" cy="14.6" rx="3.4" ry="4" fill={dark ? "#8a6a3e" : "#a8834e"} transform="rotate(-18 6.6 14.6)" />
-          <ellipse cx="6.6" cy="14.6" rx="1.8" ry="2.4" fill={dark ? "#5c3f22" : "#7a5a2e"} transform="rotate(-18 6.6 14.6)" />
-          <ellipse cx="17" cy="9.8" rx="3" ry="3.6" fill={dark ? "#8a6a3e" : "#a8834e"} transform="rotate(-18 17 9.8)" />
-          <ellipse cx="17" cy="9.8" rx="1.5" ry="2" fill={dark ? "#5c3f22" : "#7a5a2e"} transform="rotate(-18 17 9.8)" />
-        </>
-      );
-      break;
+  const getEmoji = (id: ItemId): string => {
+    switch (id) {
+      case "coins": return "🪙";
+      case "logs": return "🪵";
+      case "oak_logs": return "🌳";
+      case "copper_ore": return "🪨";
+      case "tin_ore": return "⚙️";
+      case "iron_ore": return "🪨";
+      case "coal": return "⬛";
+      case "gold_ore": return "✨";
+      case "raw_shrimp": return "🦐";
+      case "shrimp": return "🍤";
+      case "raw_trout": return "🐟";
+      case "trout": return "🐠";
+      case "bronze_bar": return "🟧";
+      case "iron_bar": return "⬜";
+      case "steel_bar": return "🔩";
+      case "bronze_dagger": return "🗡️";
+      case "iron_dagger": return "🗡️";
+      case "steel_dagger": return "🗡️";
+      case "bronze_sword": return "⚔️";
+      case "bronze_platebody": return "🛡️";
+      case "bronze_axe": return "🪓";
+      case "iron_axe": return "🪓";
+      case "steel_axe": return "🪓";
+      case "mithril_axe": return "🪓";
+      case "bronze_pick": return "⛏️";
+      case "iron_pick": return "⛏️";
+      case "steel_pick": return "⛏️";
+      case "mithril_pick": return "⛏️";
+      case "fly_rod": return "🎣";
+      case "bones": return "🦴";
+      case "raw_beef": return "🥩";
+      case "cooked_beef": return "🍖"; // Steak
+      case "raw_chicken": return "🍗";
+      case "cooked_chicken": return "🍗";
+      case "feathers": return "🪶";
+      case "egg": return "🥚";
+      case "fried_egg": return "🍳";
+      default: return "📦";
     }
-    case "copper_ore": case "tin_ore": case "iron_ore": case "coal": case "gold_ore":
-      inner = (
-        <>
-          <path d="M4 17 L7 7 L13 4 L20 8 L21 17 Z" fill="#5f6168" />
-          <path d="M7 7 L13 4 L16 9 L9 11 Z" fill="#71747c" />
-          <rect x="8" y="9" width="3.4" height="2.8" fill={ORE_COLORS[item]} />
-          <rect x="14" y="7" width="3" height="2.6" fill={ORE_COLORS[item]} />
-          <rect x="11" y="13" width="3.6" height="3" fill={ORE_COLORS[item]} />
-        </>
-      );
-      break;
-    case "raw_shrimp": case "shrimp": {
-      const cooked = item === "shrimp";
-      inner = (
-        <>
-          <path d="M6 14 Q6 6 13 6 Q20 6 19 12 Q18.5 16 14 16.5 L15 20 L11.4 17.4 Q6 18 6 14 Z"
-            fill={cooked ? "#e8764a" : "#c9a8b0"} stroke={cooked ? "#b04a26" : "#98707c"} strokeWidth="1" />
-          <path d="M10 7.6 Q14 7 16.6 9" stroke={cooked ? "#b04a26" : "#98707c"} strokeWidth="1" fill="none" />
-          <circle cx="8.4" cy="11" r="0.9" fill="#2a2420" />
-        </>
-      );
-      break;
+  };
+
+  // Hand-drawn 24×24 SVG icons for the v0.2.1 livestock set — no external assets.
+  const getSvg = (id: ItemId): React.ReactNode | null => {
+    switch (id) {
+      case "bones":
+        return (
+          <svg viewBox="0 0 24 24" className="h-full w-full">
+            <g stroke="#e2e8f0" strokeWidth="3" strokeLinecap="round" fill="#e2e8f0">
+              <path d="M6 6 L18 18" />
+              <circle cx="5" cy="5" r="2.2" /><circle cx="7.5" cy="4" r="2.2" />
+              <circle cx="19" cy="19" r="2.2" /><circle cx="16.5" cy="20" r="2.2" />
+            </g>
+            <g stroke="#cbd5e1" strokeWidth="2" strokeLinecap="round" opacity="0.7">
+              <path d="M18 6 L6 18" />
+            </g>
+            <circle cx="19" cy="5" r="1.8" fill="#cbd5e1" /><circle cx="16.5" cy="4" r="1.8" fill="#cbd5e1" />
+            <circle cx="5" cy="19" r="1.8" fill="#cbd5e1" /><circle cx="7.5" cy="20" r="1.8" fill="#cbd5e1" />
+          </svg>
+        );
+      case "raw_beef":
+        return (
+          <svg viewBox="0 0 24 24" className="h-full w-full">
+            <path d="M4 9 Q4 5 9 5 L17 5 Q21 5 20.5 10 Q21 16 16 18 L9 19 Q4 19 4 14 Z" fill="#b91c1c" stroke="#7f1d1d" strokeWidth="1" />
+            <path d="M5.5 9.5 Q6 6.5 10 6.5 L16 6.5" fill="none" stroke="#fecaca" strokeWidth="2.2" strokeLinecap="round" />
+            <circle cx="14" cy="13" r="1.4" fill="#fecaca" opacity="0.8" />
+          </svg>
+        );
+      case "cooked_beef":
+        return (
+          <svg viewBox="0 0 24 24" className="h-full w-full">
+            <path d="M4 9 Q4 5 9 5 L17 5 Q21 5 20.5 10 Q21 16 16 18 L9 19 Q4 19 4 14 Z" fill="#92400e" stroke="#5b2c0a" strokeWidth="1" />
+            <path d="M7 9 L10 15 M11.5 8 L14.5 15 M16 8 L18.5 13" stroke="#451a03" strokeWidth="1.6" strokeLinecap="round" />
+            <path d="M5.5 9 Q6 6.5 10 6.5" fill="none" stroke="#fbbf24" strokeWidth="1.4" strokeLinecap="round" opacity="0.7" />
+          </svg>
+        );
+      case "raw_chicken":
+        return (
+          <svg viewBox="0 0 24 24" className="h-full w-full">
+            <path d="M8 6 Q15 4 18 9 Q20 14 14 16 Q9 17 7.5 13 Z" fill="#fbcfe8" stroke="#f9a8d4" strokeWidth="1" />
+            <path d="M7.5 13 L5 18" stroke="#f9a8d4" strokeWidth="2.4" strokeLinecap="round" />
+            <circle cx="4.5" cy="19" r="1.6" fill="#fdf2f8" /><circle cx="6.2" cy="19.6" r="1.6" fill="#fdf2f8" />
+            <circle cx="14.5" cy="10" r="1.2" fill="#fdf2f8" opacity="0.9" />
+          </svg>
+        );
+      case "feathers":
+        return (
+          <svg viewBox="0 0 24 24" className="h-full w-full">
+            <path d="M19 4 Q10 6 7 13 Q5.5 17 6 19 Q11 18 15 13 Q18.5 8.5 19 4 Z" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1" />
+            <path d="M18 5 L7 18" stroke="#64748b" strokeWidth="1.2" strokeLinecap="round" />
+            <path d="M14 8 L10.5 9.5 M12.5 11 L9 12.5 M11 13.5 L8 15" stroke="#94a3b8" strokeWidth="0.8" />
+          </svg>
+        );
+      case "egg":
+        return (
+          <svg viewBox="0 0 24 24" className="h-full w-full">
+            <ellipse cx="12" cy="13" rx="6.5" ry="8" fill="#fef3c7" stroke="#fcd34d" strokeWidth="1" />
+            <ellipse cx="9.8" cy="9.5" rx="2" ry="2.8" fill="#fffbeb" opacity="0.9" />
+          </svg>
+        );
+      case "fried_egg":
+        return (
+          <svg viewBox="0 0 24 24" className="h-full w-full">
+            <path d="M5 12 Q4 7 9 7 Q11 4 15 6 Q20 6 20 11 Q21 16 16 17 Q13 20 9 18 Q4 17 5 12 Z" fill="#fafaf9" stroke="#e7e5e4" strokeWidth="1" />
+            <circle cx="12.5" cy="12" r="3.6" fill="#fbbf24" stroke="#f59e0b" strokeWidth="0.8" />
+            <circle cx="11.4" cy="11" r="1" fill="#fde68a" />
+          </svg>
+        );
+      default:
+        return null;
     }
-    case "raw_trout": case "trout": {
-      const cooked = item === "trout";
-      inner = (
-        <>
-          <path d="M3 12 Q8 5 15 7 L21 4 L19.6 12 L21 20 L15 17 Q8 19 3 12 Z"
-            fill={cooked ? "#d8945a" : "#7a94a8"} stroke={cooked ? "#a8622e" : "#54708a"} strokeWidth="1" />
-          <path d="M9 8.4 Q13 8 16 9.6" stroke={cooked ? "#a8622e" : "#54708a"} strokeWidth="1" fill="none" />
-          <circle cx="6.4" cy="11" r="1" fill="#22201e" />
-        </>
-      );
-      break;
-    }
-    case "bronze_bar": case "iron_bar": case "steel_bar":
-      inner = (
-        <>
-          <path d="M4 15 L8 9 L20 9 L16 15 Z" fill={c} stroke="rgba(0,0,0,0.35)" strokeWidth="1" />
-          <path d="M8 9 L20 9 L18.4 11.4 L6.4 11.4 Z" fill="#ffffff" opacity="0.28" />
-        </>
-      );
-      break;
-    case "bronze_dagger": case "iron_dagger": case "steel_dagger":
-      inner = (
-        <>
-          <path d="M12 2.6 L14 12 L12 14 L10 12 Z" fill="#d5dbe2" stroke="rgba(0,0,0,0.3)" strokeWidth="0.8" />
-          <path d="M12 2.6 L14 12 L12 13 Z" fill="#aab2bc" />
-          <rect x="7.4" y="12.6" width="9.2" height="2.6" rx="1.2" fill={c} />
-          <rect x="10.9" y="15" width="2.2" height="5.4" rx="1" fill="#5c3f22" />
-          <circle cx="12" cy="21" r="1.5" fill={c} />
-        </>
-      );
-      break;
-    case "bronze_axe": case "iron_axe": case "steel_axe": case "mithril_axe":
-      inner = (
-        <>
-          <rect x="11" y="4" width="2.2" height="17" rx="1" fill="#7a5a2e" transform="rotate(18 12 12)" />
-          <path d="M6.5 4.5 Q14 2 18.5 5.5 L17 9.5 Q12.5 6.5 7.8 8.6 Z" fill={c} stroke="rgba(0,0,0,0.35)" strokeWidth="1" />
-        </>
-      );
-      break;
-    case "bronze_pick": case "iron_pick": case "steel_pick": case "mithril_pick":
-      inner = (
-        <>
-          <rect x="11" y="6" width="2.2" height="15" rx="1" fill="#7a5a2e" transform="rotate(-14 12 12)" />
-          <path d="M4 9 Q12 3 20 9 L18.2 11.6 Q12 7 5.8 11.6 Z" fill={c} stroke="rgba(0,0,0,0.35)" strokeWidth="1" />
-        </>
-      );
-      break;
-    case "bones": case "big_bones": {
-      const big = item === "big_bones";
-      inner = (
-        <g transform={`rotate(-35 12 12)${big ? " scale(1.12)" : ""}`} transform-origin="12 12">
-          <rect x="5.4" y="10.4" width="13.2" height="3.2" rx="1.6" fill="#e8e2d2" stroke="#a89c84" strokeWidth="0.9" />
-          <circle cx="5.8" cy="9.7" r="2.5" fill="#e8e2d2" stroke="#a89c84" strokeWidth="0.9" />
-          <circle cx="5.8" cy="14.3" r="2.5" fill="#e8e2d2" stroke="#a89c84" strokeWidth="0.9" />
-          <circle cx="18.2" cy="9.7" r="2.5" fill="#e8e2d2" stroke="#a89c84" strokeWidth="0.9" />
-          <circle cx="18.2" cy="14.3" r="2.5" fill="#e8e2d2" stroke="#a89c84" strokeWidth="0.9" />
-        </g>
-      );
-      break;
-    }
-    case "raw_beef":
-      inner = (
-        <>
-          <path d="M4 8 Q12 4 20 8 Q22 13 19 18 Q12 22 5 18 Q2.6 13 4 8 Z" fill="#c25a52" stroke="#8a3a34" strokeWidth="1" />
-          <path d="M5.4 8.8 Q12 5.6 18.6 8.8 Q17 10.6 12 10.8 Q7 10.6 5.4 8.8 Z" fill="#f0d8c8" opacity="0.85" />
-        </>
-      );
-      break;
-    case "steak":
-      inner = (
-        <>
-          <path d="M4 8 Q12 4 20 8 Q22 13 19 18 Q12 22 5 18 Q2.6 13 4 8 Z" fill="#8a4e2e" stroke="#5c3018" strokeWidth="1" />
-          <path d="M7 10.4 L17 10.4 M6.4 13.4 L17.6 13.4 M7 16.4 L16.6 16.4" stroke="#5c3018" strokeWidth="1.1" />
-        </>
-      );
-      break;
-    case "raw_chicken":
-    case "cooked_chicken": {
-      const cooked = item === "cooked_chicken";
-      inner = (
-        <>
-          <path d="M6 15 Q5 8 11 6.4 Q17 5 19 9 Q21.4 13 18.6 16.6 Q14 20.6 8.6 18.6 Q6 17.6 6 15 Z"
-            fill={cooked ? "#c8863a" : "#eec9a8"} stroke={cooked ? "#8a5420" : "#b08a5e"} strokeWidth="1" />
-          <path d="M15 4.6 L17.6 2.6 L17.9 5.8 Z" fill={cooked ? "#c8863a" : "#eec9a8"} stroke={cooked ? "#8a5420" : "#b08a5e"} strokeWidth="0.9" />
-          <path d="M9 12 Q12 11 14 13" stroke={cooked ? "#8a5420" : "#b08a5e"} strokeWidth="0.9" fill="none" />
-        </>
-      );
-      break;
-    }
-    case "feather":
-      inner = (
-        <>
-          <path d="M6 20 Q6.5 10 14 4 Q19.5 6 18.5 11 Q17 16.5 9.5 18.5 Z" fill="#f2f0e8" stroke="#b8b4a4" strokeWidth="1" />
-          <path d="M7.6 18.4 Q12 12 17 6.4" stroke="#b8b4a4" strokeWidth="1" fill="none" />
-        </>
-      );
-      break;
-    case "egg":
-      inner = (
-        <>
-          <ellipse cx="12" cy="13" rx="6" ry="7.6" fill="#f6f1e2" stroke="#c0b89e" strokeWidth="1" />
-          <ellipse cx="10" cy="10.4" rx="1.6" ry="2.4" fill="#fffdf4" transform="rotate(-20 10 10.4)" />
-        </>
-      );
-      break;
-    case "fried_egg":
-      inner = (
-        <>
-          <path d="M4.6 12 Q4 7 9 5.6 Q13 3.6 17 6 Q21 7.4 20.4 12 Q21.4 16 17 18.6 Q12 21 7.6 18.4 Q4 16.4 4.6 12 Z"
-            fill="#f6f1e2" stroke="#c8c0a8" strokeWidth="1" />
-          <circle cx="12.4" cy="12" r="3.6" fill="#e8b830" stroke="#c89420" strokeWidth="1" />
-          <circle cx="11.4" cy="11" r="1" fill="#f6d878" />
-        </>
-      );
-      break;
-    case "fly_rod":
-      inner = (
-        <>
-          <path d="M4 21 L19 4" stroke="#7a5a2e" strokeWidth="2.2" strokeLinecap="round" />
-          <circle cx="15.6" cy="12.4" r="2.6" fill="#8a6a3e" stroke="#5c3f22" strokeWidth="1" />
-          <path d="M19 4 Q21.5 8 19.6 12.5" stroke="#c9cdd6" strokeWidth="1" fill="none" />
-          <circle cx="19.6" cy="13.4" r="1" fill="#e86a3a" />
-        </>
-      );
-      break;
+  };
+
+  const getTierTint = (id: ItemId): string => {
+    if (id === "bones") return "text-[#e2e8f0] border-[#94a3b8]/50 bg-[#334155]/40";
+    if (id === "feathers") return "text-[#fde047] border-[#eab308]/50 bg-[#713f12]/40";
+    if (id === "cooked_beef" || id === "cooked_chicken" || id === "fried_egg") return "text-[#f0c858] border-[#8a6420]/70 bg-[#241c10]/80"; // cooked = golden
+    if (id.includes("beef") || id.includes("chicken") || id.includes("egg")) return "text-[#fca5a5] border-[#ef4444]/50 bg-[#7f1d1d]/40"; // raw = red
+    if (id.startsWith("bronze_") || id === "copper_ore") return "text-[#f0c858] border-[#8a6420]/60 bg-[#241c10]/80";
+    if (id.startsWith("iron_") || id === "tin_ore") return "text-[#d8d0bc] border-[#6a5420]/60 bg-[#160e08]/80";
+    if (id.startsWith("steel_") || id === "coal") return "text-[#9fd8ef] border-[#3a5f8f]/60 bg-[#0f172a]/80";
+    if (id.startsWith("mithril_") || id === "gold_ore" || id === "coins") return "text-[#ffe14a] border-[#d8b25c] bg-[#3a2f14]/60 shadow-sm";
+    if (id.includes("trout") || id.includes("shrimp") || id === "fly_rod") return "text-[#9fd8ef] border-[#3a5f8f]/50 bg-[#121c2a]/60";
+    return "text-[#7ee06a] border-[#3e6224]/50 bg-[#122410]/60";
+  };
+
+  // Numeric size: bare glyph at that pixel size (used in the top bar coin readout)
+  if (typeof size === "number") {
+    const svg = getSvg(item);
+    return (
+      <span
+        title={def.name}
+        className="inline-flex items-center justify-center leading-none select-none"
+        style={{ width: size, height: size, fontSize: Math.round(size * 0.92) }}
+      >
+        {svg ?? getEmoji(item)}
+      </span>
+    );
   }
 
+  const sizeClass = {
+    sm: "w-8 h-8 text-base",
+    md: "w-11 h-11 text-xl",
+    lg: "w-14 h-14 text-2xl",
+  }[size];
+
   return (
-    <svg viewBox="0 0 24 24" width={size} height={size} style={{ display: "block", filter: "drop-shadow(0 1px 1px rgba(0,0,0,0.5))" }}>
-      {inner}
-    </svg>
+    <div
+      title={`${def.name}${def.price ? ` (${def.price} coins)` : ""}`}
+      className={`relative flex items-center justify-center rounded border shadow-inner font-mono transition-transform hover:scale-105 ${sizeClass} ${getTierTint(item)}`}
+    >
+      <span className="drop-shadow-md select-none">{getSvg(item) ?? getEmoji(item)}</span>
+      
+      {def.tier && (
+        <div className="absolute top-0.5 right-1 text-[9px] font-bold px-1 py-0 rounded bg-[#0c0a07] text-[#f0c858] border border-[#6a5428]">
+          T{def.tier}
+        </div>
+      )}
+
+      {count !== undefined && count > 0 && (
+        <span className="absolute bottom-0.5 right-1 px-1 bg-[#0c0906]/95 text-[#f0c858] font-bold text-[10px] rounded border border-[#6a5420] leading-tight">
+          {count > 999 ? `${(count / 1000).toFixed(1)}k` : count}
+        </span>
+      )}
+    </div>
   );
-}
+};
