@@ -7,6 +7,10 @@ Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
 ---
 
+## 💖 Support this Project
+
+[![Sponsor](https://raw.githubusercontent.com/djsaintg/A-Highland-Song-Interactive-Map/main/sponsor.svg)](https://buymeacoffee.com/djsaintg)
+
 ## What's new in v0.3.0
 
 The Gamma release is a ground-up visual pass over the whole valley, with the
