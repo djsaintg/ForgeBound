@@ -9,7 +9,7 @@ Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
 ## 💖 Support this Project
 
-[![Sponsor](https://raw.githubusercontent.com/djsaintg/A-Highland-Song-Interactive-Map/main/sponsor.svg)](https://buymeacoffee.com/djsaintg)
+[![Sponsor](https://raw.githubusercontent.com/djsaintg/djsaintg/main/sponsor.svg)](https://buymeacoffee.com/djsaintg)
 
 ## What's new in v0.3.0
 
