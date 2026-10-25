@@ -8,13 +8,19 @@ notes for future versions. Once shipped, they move into `CHANGELOG.md`.
 ## v0.3.1 — Visual Repairs (planned — gameplay-affecting, ships first)
 
 ### 🛠️ Eliminate Render Flickering
+- **✅ Solved.** Root cause was the hero's ground shadow: a pixel-unit bob fed
+  into a tile-fraction radius, the radius went negative, and `ctx.ellipse()`
+  threw mid-frame — skipping everything drawn after the hero (incl. the
+  lighting pass) on alternating frames. Fixed alongside the tile-size mismatch
+  below; confirmed in play while walking and chopping. The remaining bullets
+  are kept as hardening ideas, not known bugs.
 - **The Issue:** Movement while zoomed and action progress (axe swings) trigger
   visual flickering / shaking.
 - **What the code actually does:** the world canvas is *not* driven by React
   re-renders. `WorldCanvas.tsx` runs its own `requestAnimationFrame` loop that
   clears and fully redraws every frame, and the browser already double-buffers
   canvas output. Offscreen double-buffering on its own is unlikely to fix this.
-- **Suspect #1 — tile-size mismatch (fix first):** `render()` rounds the tile
+- **✅ Fixed — tile-size mismatch:** `render()` rounds the tile
   size (`Math.round(TILE * zoom)`, `render.ts`), but the camera follow in
   `WorldCanvas.tsx`, `clampCam()` in `render.ts`, and the click-to-tile maths
   all use the *unrounded* `TILE * zoom`. At the default 2.2× zoom that's 70px

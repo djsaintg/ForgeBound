@@ -1148,10 +1148,13 @@ function drawPlayer64(
   const frontOff  = frontLegLead ?  legSwing : -legSwing;
   const backOff   = frontLegLead ? -legSwing :  legSwing;
 
-  // Ground shadow — subtly pulses with body bob
-  ctx.fillStyle = `rgba(0,0,0,${0.55 - bodyBob * 0.5})`;
+  // Ground shadow — subtly pulses with body bob. bodyBob is in pixels, so
+  // normalise to a tile fraction: unscaled, the radius went negative and
+  // ellipse() threw mid-frame, skipping the rest of the render (the flicker).
+  const bobFrac = bodyBob / s;
+  ctx.fillStyle = `rgba(0,0,0,${0.55 - bobFrac * 0.5})`;
   ctx.beginPath();
-  ctx.ellipse(cx, py + s * 0.87, s * (0.28 - bodyBob * 0.4), s * 0.13, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, py + s * 0.87, s * (0.28 - bobFrac * 0.4), s * 0.13, 0, 0, Math.PI * 2);
   ctx.fill();
 
   // ---- Legs with bend at the knee ----------------------------------------

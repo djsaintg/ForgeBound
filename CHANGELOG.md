@@ -25,6 +25,12 @@ All notable changes to **ForgeBound**. The format is based on
   walking zoomed, and clicks land on the tile under the cursor anywhere on the
   map (previously off by ~0.4px per tile, ≈20px by tile 50)
 - Mouse-wheel zoom is held to the same 1.0×–3.2× range as the Settings slider
+- World flicker while walking or gathering: the hero's shadow mixed a pixel
+  bob into a tile-fraction formula, its radius went negative, and the canvas
+  threw mid-frame — skipping everything drawn after the hero, including the
+  lighting pass, on alternating frames
+- Felling a tree or emptying a rock now ends the action immediately, instead
+  of swinging a full extra cycle at the stump for nothing
 
 ## [0.3.0] — Gamma v0.3.0 · Visual & Animation Overhaul — 2026-07-25
 

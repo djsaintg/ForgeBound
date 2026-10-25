@@ -549,7 +549,10 @@ export function useGame() {
       raw_trout: "hooked a fine river trout",
     };
     chat("info", `${gg.name} ${got[def.item] ?? "picked up " + ITEMS[def.item].name.toLowerCase()} · +${def.xp} XP`);
-    a.progress = 0;
+    // A felled tree or emptied rock ends the action now, rather than swinging
+    // a whole extra cycle at nothing; fishing spots never deplete and repeat.
+    if (def.respawn > 0) gg.action = null;
+    else a.progress = 0;
   };
 
   const startRecipe = (id: RecipeId) => {
