@@ -11,6 +11,11 @@ All notable changes to **ForgeBound**. The format is based on
   instead of the starter-template placeholder
 - Roadmap's v0.3.1 flicker plan rewritten around the real render loop
 
+### Removed
+
+- `forgebound-gamma-visual-update.zip` — a duplicate of `src/` that had been
+  committed by accident; `*.zip` is now git-ignored
+
 ### Fixed
 
 - Login builder's notes no longer advertise resizable log & backpack panels,

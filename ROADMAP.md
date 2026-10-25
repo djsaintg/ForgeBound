@@ -41,8 +41,8 @@ notes for future versions. Once shipped, they move into `CHANGELOG.md`.
   `useGame.ts` ×3, `types.ts` comment). Read it from `package.json` at build
   time (Vite `define` or a JSON import) so a release is a one-line bump —
   pairs naturally with the changelog-driven login notes in v0.3.2.
-- `forgebound-gamma-visual-update.zip` is committed but is byte-identical to
-  `src/`; remove it from the repo and ignore `*.zip`.
+- ~~`forgebound-gamma-visual-update.zip` is committed but is byte-identical to
+  `src/`; remove it from the repo and ignore `*.zip`.~~ Done.
 
 ---
 
