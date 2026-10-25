@@ -3,7 +3,10 @@
 All notable changes to **ForgeBound**. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project follows semver.
 
-## [Unreleased]
+## [0.3.2] — Gamma v0.3.2 · Gathering Fixes — 2026-10-24
+
+A small patch: click from anywhere and get to work, with ore you can tell
+apart.
 
 ### Fixed
 

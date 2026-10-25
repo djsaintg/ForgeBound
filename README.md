@@ -3,7 +3,7 @@
 **A single-player action-RPG that lives in one HTML file.**
 Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
-`v0.3.1 — Gamma Visual Repairs` · `100% offline` · `MIT licensed`
+`v0.3.2 — Gamma Gathering Fixes` · `100% offline` · `MIT licensed`
 
 ---
 
@@ -11,7 +11,15 @@ Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
 [![Sponsor](https://raw.githubusercontent.com/djsaintg/djsaintg/main/sponsor.svg)](https://buymeacoffee.com/djsaintg)
 
-## What's new in v0.3.1
+## What's new in v0.3.2
+
+- **Gather from anywhere** — click a tree, rock or fishing spot from across
+  the map and the hero walks over and gets straight to work (it used to
+  arrive and just stand there)
+- **Ore you can tell apart** — copper, tin, iron, coal and gold each have
+  their own hand-drawn icon, coloured like their veins in the mine
+
+## v0.3.1 — Visual Repairs
 
 A repair pass on the Gamma overhaul:
 
@@ -199,7 +207,8 @@ new version heading, then tag it — `git tag -a v0.3.1 -m "..."`.
 - [x] Pasture & coop — livestock, eggs, steak, feather-lure trout
 - [x] Gamma v0.3.0 — remastered renderer, walk cycle, fire lighting, mountains, camera
 - [x] v0.3.1 — visual repairs: canvas flicker, camera jitter and click targeting
-- [ ] v0.3.2 — login flow rework + changelog-driven builder's notes, resizable windows
+- [x] v0.3.2 — gathering fixes: gather from any distance, distinct ore icons
+- [ ] v0.3.3 — login flow rework + changelog-driven builder's notes, resizable windows
 - [ ] Quests with real rewards
 - [ ] Light up the remaining 13 skills
 - [ ] A bigger world — push the Peaks back, new country beyond

@@ -216,7 +216,9 @@ export function LoginScreen({ hasSave, onStart }: { hasSave: boolean; onStart: (
             </button>
             {notesOpen && (
               <div className="rounded-sm border border-[#2a2415] bg-[#0f0c08] p-3 text-[11.5px] leading-relaxed text-[#a89c80]" style={{ animation: "fadeIn 0.2s ease-out" }}>
-                <p className="mb-1 font-bold text-[#c8b070]">Live in Gamma v{VERSION} — Visual Repairs</p>
+                <p className="mb-1 font-bold text-[#c8b070]">Live in Gamma v{VERSION} — Gathering Fixes</p>
+                <p className="mb-2">Click a tree, rock or fishing spot from anywhere and get straight to work · every ore has its own icon.</p>
+                <p className="mb-1 font-bold text-[#c8b070]">v0.3.1 — Visual Repairs</p>
                 <p className="mb-2">Flicker-free rendering while walking and working · clicks land on the tile under the cursor · trees and rocks stop the swing the moment they fall.</p>
                 <p className="mb-1 font-bold text-[#c8b070]">Built on the Visual &amp; Animation Overhaul</p>
                 <p>

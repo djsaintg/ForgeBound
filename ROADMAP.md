@@ -21,7 +21,7 @@ these up only if shimmer or flashes show up again.
 
 ---
 
-## v0.3.2 — Login Page Edits & UI Polish (planned)
+## v0.3.3 — Login Page Edits & UI Polish (planned)
 
 ### Display-name flow rework
 - Once a display name has been **chosen/confirmed**, the name-entry option
@@ -83,7 +83,7 @@ these up only if shimmer or flashes show up again.
 - Alternative: a `<!-- public -->` HTML comment marker the parser filters on.
 
 **Open questions:**
-- Teaser wording: confident promises ("coming in v0.3.2") vs. soft language
+- Teaser wording: confident promises ("coming in v0.3.3") vs. soft language
   ("being considered")? Public plans create expectations.
 - Show the target version number on planned items, or just "coming soon"?
 - If nothing is planned yet, hide the section entirely (don't render an empty
