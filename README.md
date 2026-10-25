@@ -3,7 +3,7 @@
 **A single-player action-RPG that lives in one HTML file.**
 Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
-`v0.3.0 — the Gamma Visual & Animation Overhaul` · `100% offline` · `MIT licensed`
+`v0.3.1 — Gamma Visual Repairs` · `100% offline` · `MIT licensed`
 
 ---
 
@@ -11,7 +11,20 @@ Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
 [![Sponsor](https://raw.githubusercontent.com/djsaintg/djsaintg/main/sponsor.svg)](https://buymeacoffee.com/djsaintg)
 
-## What's new in v0.3.0
+## What's new in v0.3.1
+
+A repair pass on the Gamma overhaul:
+
+- **No more flicker** — walking and chopping no longer strobe the lighting
+  and nearby sprites
+- **Clicks land true** — the tile under your cursor is the tile you get,
+  anywhere on the map, and the hero stays dead centre at every zoom
+- **No phantom swings** — felling a tree or emptying a rock ends the action
+  the moment it falls
+- **A livelier log** — the Adventurer's Log keeps updating even after it
+  fills up
+
+## The Gamma overhaul (v0.3.0)
 
 The Gamma release is a ground-up visual pass over the whole valley, with the
 gameplay of the combat beta fully folded in:
@@ -176,12 +189,16 @@ ForgeBound/
 `src/game/data.ts`; new terrain in `src/game/map.ts` (push the mountains back
 to grow the world); new gameplay loops in the tick inside `src/game/useGame.ts`.
 
+**Cutting a release:** bump `"version"` in `package.json` (the page title,
+login screen and log pick it up on build), move the changelog's notes under a
+new version heading, then tag it — `git tag -a v0.3.1 -m "..."`.
+
 ## Roadmap
 
 - [x] Combat v1 — melee, hitsplats, loot, death/respawn and Prayer
 - [x] Pasture & coop — livestock, eggs, steak, feather-lure trout
 - [x] Gamma v0.3.0 — remastered renderer, walk cycle, fire lighting, mountains, camera
-- [ ] v0.3.1 — visual repairs: fix canvas flicker, camera jitter and click targeting
+- [x] v0.3.1 — visual repairs: canvas flicker, camera jitter and click targeting
 - [ ] v0.3.2 — login flow rework + changelog-driven builder's notes, resizable windows
 - [ ] Quests with real rewards
 - [ ] Light up the remaining 13 skills

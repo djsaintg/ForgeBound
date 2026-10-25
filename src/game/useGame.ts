@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
+import { VERSION } from "../version";
 import type {
   Action,
   ChatKind,
@@ -1129,7 +1130,7 @@ export function useGame() {
     moveAcc.current = 0;
     const gg = gref.current;
     gg.chat = [];
-    chat("sys", "Welcome to ForgeBound — Gamma (v0.3.0) Update!");
+    chat("sys", `Welcome to ForgeBound — Gamma (v${VERSION}) Update!`);
     chat("sys", "New: Combat System Active! Fight Goblins, Cows, and Chickens, pick up loot, and cook meat/eggs!");
     chat("info", "Tip: Left-click monsters to attack. Left-click floor loot to pick up! Click bones in pack for Prayer XP.");
     bump();
@@ -1151,10 +1152,10 @@ export function useGame() {
     if (!gg.equipped.weapon) gg.equipped.weapon = "bronze_sword";
 
     if (loaded) {
-      chat("sys", `Welcome back to ForgeBound, ${gg.name}! Combat engine restored in Gamma v0.3.0.`);
+      chat("sys", `Welcome back to ForgeBound, ${gg.name}! Combat engine restored in Gamma v${VERSION}.`);
       chat("sys", "Monsters now fight back, lay eggs, and drop loot onto the valley terrain!");
     } else {
-      chat("sys", "Welcome to ForgeBound — Gamma (v0.3.0) with the immersive layout & combat.");
+      chat("sys", `Welcome to ForgeBound — Gamma (v${VERSION}) with the immersive layout & combat.`);
       chat("info", "Starter kit: bronze sword, axe & pick in pack. Engage in combat with goblins, cows & chickens!");
     }
     bump();

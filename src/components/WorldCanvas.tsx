@@ -1,6 +1,35 @@
 import { useEffect, useRef } from "react";
 import type { GameApi } from "../game/useGame";
 import { clampCam, render, tileSize } from "../game/render";
+import type { GameState } from "../game/types";
+
+// Cheap FNV-1a hash over the state the React panels display. Runs every
+// frame, so it walks the fields directly instead of JSON.stringify-ing them
+// (which allocated a multi-KB string 60×/s).
+function uiSignature(g: GameState): number {
+    let h = 0x811c9dc5;
+    const num = (n: number) => { h = Math.imul(h ^ ((n * 1000) | 0), 16777619); };
+    const str = (s: string) => { for (let i = 0; i < s.length; i++) num(s.charCodeAt(i)); num(-1); };
+    const rec = (r: Record<string, number | string | undefined>) => {
+        for (const k in r) { str(k); const v = r[k]; if (typeof v === "number") num(v); else if (v) str(v); }
+        num(-2);
+    };
+
+    for (const s of g.inv) { if (s) { str(s.item); num(s.n); } else num(-3); }
+    rec(g.xp);
+    rec(g.bank);
+    rec(g.equipped);
+    num(g.coins); num(g.hp); num(g.zoom); str(g.graphicsMode);
+    num(+g.bankOpen); num(+g.shopOpen); num(+g.settingsOpen);
+    if (g.stationUI) { str(g.stationUI.station); num(g.stationUI.x); num(g.stationUI.y); } else num(-4);
+    if (g.pendingStation) { str(g.pendingStation.kind); num(g.pendingStation.x); num(g.pendingStation.y); } else num(-5);
+    // The log is capped at 90 entries, so key it by the newest id, not length.
+    num(g.chat.length ? g.chat[g.chat.length - 1].id : -6);
+    num(g.levelUps.length);
+    num(g.xpEvents.length);
+    if (g.xpEvents.length) { num(g.xpEvents[0].id); num(g.xpEvents[g.xpEvents.length - 1].id); }
+    return h;
+}
 
 export function WorldCanvas({ api }: { api: GameApi }) {
     const wrapRef = useRef<HTMLDivElement>(null);
@@ -10,7 +39,7 @@ export function WorldCanvas({ api }: { api: GameApi }) {
     const facingRef = useRef(1);
     const lastXRef = useRef(0);
     const clicksRef = useRef<{ x: number; y: number; t0: number }[]>([]);
-    const lastSigRef = useRef("");
+    const lastSigRef = useRef(0);
 
     useEffect(() => {
         const wrap = wrapRef.current!;
@@ -43,11 +72,7 @@ export function WorldCanvas({ api }: { api: GameApi }) {
             api.update(dt, t);
 
             // re-render the React panels only when something visible changed
-            const sig = JSON.stringify([
-                g.inv, g.xp, g.coins, g.hp, g.equipped, g.bank,
-                g.bankOpen, g.shopOpen, g.stationUI, g.settingsOpen, g.pendingStation,
-                g.chat.length, g.levelUps.length, g.xpEvents.length, g.zoom, g.graphicsMode,
-            ]);
+            const sig = uiSignature(g);
             if (sig !== lastSigRef.current) {
                 lastSigRef.current = sig;
                 api.bump();

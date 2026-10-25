@@ -3,34 +3,45 @@
 All notable changes to **ForgeBound**. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project follows semver.
 
-## [Unreleased]
+## [0.3.1] — Gamma v0.3.1 · Visual Repairs — 2026-10-24
+
+The valley holds still. Flicker gone, clicks true, and no more swinging at
+stumps.
+
+### Fixed
+
+- World flicker while walking or gathering: the hero's shadow mixed a pixel
+  bob into a tile-fraction formula, its radius went negative, and the canvas
+  threw mid-frame — skipping everything drawn after the hero, including the
+  lighting pass, on alternating frames
+- Camera and click-picking now use the same whole-pixel tile size as the
+  renderer, so the hero stays centred, the view no longer jitters while
+  walking zoomed, and clicks land on the tile under the cursor anywhere on the
+  map (previously off by ~0.4px per tile, ≈20px by tile 50)
+- Felling a tree or emptying a rock now ends the action immediately, instead
+  of swinging a full extra cycle at the stump for nothing
+- Once the Adventurer's Log reached its 90-entry cap, new lines could wait to
+  appear until something else on screen changed; panels now refresh on every
+  new entry
+- Mouse-wheel zoom is held to the same 1.0×–3.2× range as the Settings slider
+- Login builder's notes no longer advertise resizable log & backpack panels,
+  which aren't in this build
 
 ### Changed
 
-- Package metadata now names the project (`forgebound`, version `0.3.0`)
-  instead of the starter-template placeholder
-- Roadmap's v0.3.1 flicker plan rewritten around the real render loop
+- The UI-refresh check no longer serialises inventory, bank and XP to JSON
+  every frame; a lightweight hash does the same job without the per-frame
+  string allocation
+- The version number now comes from `package.json` alone — the page title,
+  login screen and Adventurer's Log all read it at build time
+- Package metadata names the project (`forgebound`) instead of the
+  starter-template placeholder
+- Login builder's notes lead with the v0.3.1 repairs
 
 ### Removed
 
 - `forgebound-gamma-visual-update.zip` — a duplicate of `src/` that had been
   committed by accident; `*.zip` is now git-ignored
-
-### Fixed
-
-- Login builder's notes no longer advertise resizable log & backpack panels,
-  which aren't in this build
-- Camera and click-picking now use the same whole-pixel tile size as the
-  renderer, so the hero stays centred, the view no longer jitters while
-  walking zoomed, and clicks land on the tile under the cursor anywhere on the
-  map (previously off by ~0.4px per tile, ≈20px by tile 50)
-- Mouse-wheel zoom is held to the same 1.0×–3.2× range as the Settings slider
-- World flicker while walking or gathering: the hero's shadow mixed a pixel
-  bob into a tile-fraction formula, its radius went negative, and the canvas
-  threw mid-frame — skipping everything drawn after the hero, including the
-  lighting pass, on alternating frames
-- Felling a tree or emptying a rock now ends the action immediately, instead
-  of swinging a full extra cycle at the stump for nothing
 
 ## [0.3.0] — Gamma v0.3.0 · Visual & Animation Overhaul — 2026-07-25
 

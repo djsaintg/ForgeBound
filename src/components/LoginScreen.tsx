@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { sfx } from "../game/audio";
+import { VERSION } from "../version";
 
 interface Ember { x: number; y: number; vx: number; vy: number; s: number; ph: number; hue: number; }
 interface Star { x: number; y: number; r: number; ph: number; sp: number; }
@@ -215,7 +216,9 @@ export function LoginScreen({ hasSave, onStart }: { hasSave: boolean; onStart: (
             </button>
             {notesOpen && (
               <div className="rounded-sm border border-[#2a2415] bg-[#0f0c08] p-3 text-[11.5px] leading-relaxed text-[#a89c80]" style={{ animation: "fadeIn 0.2s ease-out" }}>
-                <p className="mb-1 font-bold text-[#c8b070]">Live in Gamma v0.3.0 — the Visual &amp; Animation Overhaul</p>
+                <p className="mb-1 font-bold text-[#c8b070]">Live in Gamma v{VERSION} — Visual Repairs</p>
+                <p className="mb-2">Flicker-free rendering while walking and working · clicks land on the tile under the cursor · trees and rocks stop the swing the moment they fall.</p>
+                <p className="mb-1 font-bold text-[#c8b070]">Built on the Visual &amp; Animation Overhaul</p>
                 <p>
                   64-bit remastered renderer with a live 8-bit⇄64-bit toggle · explorer camera zoom on the mouse wheel ·
                   a mountain-ringed realm holding Grublin Gully's goblins &amp; brigands · cows, hens, laid eggs,
@@ -232,7 +235,7 @@ export function LoginScreen({ hasSave, onStart }: { hasSave: boolean; onStart: (
             )}
           </div>
           <div className="border-t border-[#2a2415] px-5 py-2.5 text-center text-[10px] tracking-wide text-[#5a4c32]">
-            v0.3.0 · single-player · progress lives in this browser
+            v{VERSION} · single-player · progress lives in this browser
           </div>
         </div>
       </div>
