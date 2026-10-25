@@ -3,7 +3,20 @@
 All notable changes to **ForgeBound**. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project follows semver.
 
-## [0.3.0] — Gamma v0.3.0 · Visual & Animation Overhaul — 2026
+## [Unreleased]
+
+### Changed
+
+- Package metadata now names the project (`forgebound`, version `0.3.0`)
+  instead of the starter-template placeholder
+- Roadmap's v0.3.1 flicker plan rewritten around the real render loop
+
+### Fixed
+
+- Login builder's notes no longer advertise resizable log & backpack panels,
+  which aren't in this build
+
+## [0.3.0] — Gamma v0.3.0 · Visual & Animation Overhaul — 2026-07-25
 
 Eight bits become sixty-four, and the valley finally moves and breathes
 at the same pace as its hero.
@@ -73,7 +86,7 @@ at the same pace as its hero.
 - The walkable buffer beyond the old palisade let players skirt the river; the
   mountain ring seals the crossing to the bridge
 
-## [0.2.1] — 2026
+## [0.2.1] — 2026-07-25
 
 The pasture & coop update.
 
@@ -106,7 +119,7 @@ The pasture & coop update.
 - Loot is table-driven per enemy with a single combined drop line
 - Cows greet their attackers with a suitable moo
 
-## [0.2.0] — 2026
+## [0.2.0] — 2026-07-25
 
 The combat beta. Steel is no longer just for show.
 

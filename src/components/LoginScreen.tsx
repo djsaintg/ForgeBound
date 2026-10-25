@@ -220,7 +220,7 @@ export function LoginScreen({ hasSave, onStart }: { hasSave: boolean; onStart: (
                   64-bit remastered renderer with a live 8-bit⇄64-bit toggle · explorer camera zoom on the mouse wheel ·
                   a mountain-ringed realm holding Grublin Gully's goblins &amp; brigands · cows, hens, laid eggs,
                   feather-lure trout and steak · melee combat with hitsplats, loot drops and bone-burying Prayer ·
-                  resizable glass log &amp; backpack panels (or dock them below the map) · 10 live skills · bank, shop
+                  10 live skills · bank, shop
                   &amp; gear tiers · autosave to localStorage.
                 </p>
                 <p className="mb-1 mt-2 font-bold text-[#c8b070]">Roadmap</p>

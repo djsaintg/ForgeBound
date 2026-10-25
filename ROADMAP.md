@@ -9,14 +9,40 @@ notes for future versions. Once shipped, they move into `CHANGELOG.md`.
 
 ### 🛠️ Eliminate Render Flickering
 - **The Issue:** Movement while zoomed and action progress (axe swings) trigger
-  visual flickering. This is likely caused by React re-render cycles clearing
-  the canvas while the draw loop is mid-cycle.
-- **The Fix:** Implement **Offscreen Double-Buffering**. The `render` function
-  will draw everything to an invisible off-canvas first, then blit the final
-  frame to the visible canvas in a single operation. This kills the "clear-frame"
-  flicker completely.
-- **Sub-pixel Shimmering:** Snap the final camera pixel offsets to integers
-  after zoom scaling to prevent "shaking" textures at specific zoom levels.
+  visual flickering / shaking.
+- **What the code actually does:** the world canvas is *not* driven by React
+  re-renders. `WorldCanvas.tsx` runs its own `requestAnimationFrame` loop that
+  clears and fully redraws every frame, and the browser already double-buffers
+  canvas output. Offscreen double-buffering on its own is unlikely to fix this.
+- **Suspect #1 — tile-size mismatch (fix first):** `render()` rounds the tile
+  size (`Math.round(TILE * zoom)`, `render.ts`), but the camera follow in
+  `WorldCanvas.tsx`, `clampCam()` in `render.ts`, and the click-to-tile maths
+  all use the *unrounded* `TILE * zoom`. At the default 2.2× zoom that's 70px
+  drawn vs 70.4px assumed — an error that grows ~0.4px per tile across the map
+  (≈20px by tile 50). Symptoms: jitter while moving, the hero drifting off
+  centre, and clicks landing on the wrong tile far from the origin.
+  **Fix:** compute one `effTile` in a shared helper and use it everywhere
+  (render, camera, clamp, click, minimap).
+- **Suspect #2 — canvas resets:** assigning `canvas.width/height` wipes the
+  canvas. The `ResizeObserver` in `WorldCanvas.tsx` does this whenever the
+  viewport box changes (panels/modals opening, mobile drawer). Only resize when
+  the computed size actually differs, and redraw immediately after.
+- **Sub-pixel Shimmering:** snap the final camera offset to whole *device*
+  pixels (account for `devicePixelRatio`) after zoom scaling.
+- **Fallback:** only if flicker survives the above, add an offscreen buffer.
+
+### ⚡ Per-frame overhead
+- The draw loop `JSON.stringify`s inventory, XP, bank and UI state **every
+  frame** (~60×/s) to decide whether React panels need a refresh. Replace with a
+  cheap version counter bumped by the game actions that change those fields.
+
+### 🧹 Housekeeping
+- The version string is hand-typed in five places (`LoginScreen.tsx` ×2,
+  `useGame.ts` ×3, `types.ts` comment). Read it from `package.json` at build
+  time (Vite `define` or a JSON import) so a release is a one-line bump —
+  pairs naturally with the changelog-driven login notes in v0.3.2.
+- `forgebound-gamma-visual-update.zip` is committed but is byte-identical to
+  `src/`; remove it from the repo and ignore `*.zip`.
 
 ---
 
@@ -91,6 +117,9 @@ notes for future versions. Once shipped, they move into `CHANGELOG.md`.
 ### 📐 Resizable Interface Windows
 - Restore the functionality allowing players to drag the corners of the
   **Backpack** and **Adventurer's Log** to resize them.
+- Note: no resize/drag code exists in the current tree — this is a rebuild,
+  not a re-enable. The side panel is a fixed `w-[290px]` and the log a fixed
+  `h-[158px]` in `App.tsx`.
 - Ensure the layout remains "Gamma-truthful": transparent glass styling that
   allows the map to show through the background.
 
@@ -99,6 +128,11 @@ notes for future versions. Once shipped, they move into `CHANGELOG.md`.
   down the screen.
 - **Target:** Anchor them at `top: 224px` so they appear cleanly underneath
   the Circular Radar Compass instead of being hidden behind it.
+- Note: in the current tree there is **no Active Action Banner** component,
+  and the XP orbs sit top-*left* (`XpOrbs.tsx`) while the compass sits
+  top-*right* (`App.tsx`), so they only collide on narrow viewports. Decide
+  whether to (re)build the action banner first, then place both under the
+  compass.
 
 ### ⛰️ Mountain Expansion
 - Refine the **Mountain Range** border visuals to support "pushing" them back

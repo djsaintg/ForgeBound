@@ -181,7 +181,7 @@ to grow the world); new gameplay loops in the tick inside `src/game/useGame.ts`.
 - [x] Combat v1 — melee, hitsplats, loot, death/respawn and Prayer
 - [x] Pasture & coop — livestock, eggs, steak, feather-lure trout
 - [x] Gamma v0.3.0 — remastered renderer, walk cycle, fire lighting, mountains, camera
-- [ ] v0.3.1 — double-buffered rendering (kills canvas flicker)
+- [ ] v0.3.1 — visual repairs: fix canvas flicker, camera jitter and click targeting
 - [ ] v0.3.2 — login flow rework + changelog-driven builder's notes, resizable windows
 - [ ] Quests with real rewards
 - [ ] Light up the remaining 13 skills
