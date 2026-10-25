@@ -10,6 +10,9 @@ All notable changes to **ForgeBound**. The format is based on
 - Tin ore showed a cog (⚙️) in the backpack, and copper and iron shared the
   same plain rock. All five ores now have hand-drawn SVG chunks studded with
   crystals in the same colours as their veins in the mine
+- Clicking a tree, rock or fishing spot from more than a tile away now works:
+  the adjacency check was cancelling the action on the first frame of the
+  walk over, so the hero arrived and just stood there
 
 ## [0.3.1] — Gamma v0.3.1 · Visual Repairs — 2026-10-24
 

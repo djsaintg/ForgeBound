@@ -784,9 +784,12 @@ export function useGame() {
         if (gg.action.progress >= gg.action.cycle) {
           completeCombatRound(gg.action, now);
         }
+      } else if (gg.path.length) {
+        // Still walking over — judge adjacency only once the hero arrives,
+        // or every click from more than a tile away is cancelled en route.
       } else if (!adjacentTo(gg.x, gg.y, gg.action.x, gg.action.y)) {
         gg.action = null;
-      } else if (!gg.path.length) {
+      } else {
         gg.action.progress += dt;
         if (gg.action.progress >= gg.action.cycle) {
           if (gg.action.kind === "gather") completeGather(gg.action, now);
