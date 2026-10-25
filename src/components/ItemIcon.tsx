@@ -1,6 +1,7 @@
 import React from "react";
 import type { ItemId } from "../game/types";
 import { ITEMS } from "../game/data";
+import { ORE_COLORS } from "../game/render";
 
 interface Props {
   item: ItemId;
@@ -54,9 +55,34 @@ export const ItemIcon: React.FC<Props> = ({ item, size = "md", count }) => {
     }
   };
 
+  // A faceted rock chunk studded with mineral crystals — shared by every ore,
+  // tinted with the same colours the world's ore veins use.
+  const oreSvg = (fleck: string, rock = "#5a5048", rockLight = "#7a6e62", rockDark = "#3e3630") => (
+    <svg viewBox="0 0 24 24" className="h-full w-full">
+      <path d="M4 15 L6 8 L11 5 L17 6 L20 11 L19 17 L13 20 L7 19 Z" fill={rock} stroke="#1c1814" strokeWidth="1" strokeLinejoin="round" />
+      <path d="M6 8 L11 5 L12 11 L4 15 Z" fill={rockLight} opacity="0.75" />
+      <path d="M12 11 L20 11 L19 17 L13 20 Z" fill={rockDark} opacity="0.8" />
+      <g fill={fleck} stroke="#1c1814" strokeWidth="0.5" strokeLinejoin="round">
+        <path d="M7.5 10 L10 8.8 L10.8 11.2 L8.4 12.4 Z" />
+        <path d="M13 13 L15.8 12.4 L15.3 15.2 L12.8 15.8 Z" />
+        <path d="M13.8 7.4 L16.4 8 L15.2 9.9 Z" />
+        <path d="M7.6 15 L10.2 14.4 L9.6 16.9 Z" />
+      </g>
+      <g fill="#ffffff" opacity="0.7">
+        <circle cx="8.6" cy="9.8" r="0.6" /><circle cx="14" cy="13.1" r="0.6" /><circle cx="14.7" cy="8.1" r="0.45" />
+      </g>
+    </svg>
+  );
+
   // Hand-drawn 24×24 SVG icons for the v0.2.1 livestock set — no external assets.
   const getSvg = (id: ItemId): React.ReactNode | null => {
     switch (id) {
+      case "copper_ore": return oreSvg(ORE_COLORS.R);
+      case "tin_ore": return oreSvg(ORE_COLORS.S);
+      case "iron_ore": return oreSvg(ORE_COLORS.I);
+      case "gold_ore": return oreSvg(ORE_COLORS.G);
+      // Coal is the rock itself: a black lump with a cool glassy sheen
+      case "coal": return oreSvg("#5a6070", ORE_COLORS.C, "#3a3c48", "#16171d");
       case "bones":
         return (
           <svg viewBox="0 0 24 24" className="h-full w-full">

@@ -3,6 +3,14 @@
 All notable changes to **ForgeBound**. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project follows semver.
 
+## [Unreleased]
+
+### Fixed
+
+- Tin ore showed a cog (⚙️) in the backpack, and copper and iron shared the
+  same plain rock. All five ores now have hand-drawn SVG chunks studded with
+  crystals in the same colours as their veins in the mine
+
 ## [0.3.1] — Gamma v0.3.1 · Visual Repairs — 2026-10-24
 
 The valley holds still. Flicker gone, clicks true, and no more swinging at
