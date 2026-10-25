@@ -20,6 +20,11 @@ All notable changes to **ForgeBound**. The format is based on
 
 - Login builder's notes no longer advertise resizable log & backpack panels,
   which aren't in this build
+- Camera and click-picking now use the same whole-pixel tile size as the
+  renderer, so the hero stays centred, the view no longer jitters while
+  walking zoomed, and clicks land on the tile under the cursor anywhere on the
+  map (previously off by ~0.4px per tile, ≈20px by tile 50)
+- Mouse-wheel zoom is held to the same 1.0×–3.2× range as the Settings slider
 
 ## [0.3.0] — Gamma v0.3.0 · Visual & Animation Overhaul — 2026-07-25
 

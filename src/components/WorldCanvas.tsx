@@ -1,7 +1,6 @@
 import { useEffect, useRef } from "react";
 import type { GameApi } from "../game/useGame";
-import { TILE } from "../game/map";
-import { clampCam, render } from "../game/render";
+import { clampCam, render, tileSize } from "../game/render";
 
 export function WorldCanvas({ api }: { api: GameApi }) {
     const wrapRef = useRef<HTMLDivElement>(null);
@@ -55,7 +54,7 @@ export function WorldCanvas({ api }: { api: GameApi }) {
             }
 
             const zoom = g.zoom || 2.2;
-            const effTile = TILE * zoom;
+            const effTile = tileSize(zoom);
 
             if (dispRef.current.x < 0) {
                 dispRef.current = { x: g.x, y: g.y };
@@ -101,7 +100,7 @@ export function WorldCanvas({ api }: { api: GameApi }) {
         const rect = canvas.getBoundingClientRect();
         const offX = e.clientX - rect.left;
         const offY = e.clientY - rect.top;
-        const effTile = TILE * (g.zoom || 2.2);
+        const effTile = tileSize(g.zoom);
         const wx = camRef.current.x - rect.width / 2 + offX;
         const wy = camRef.current.y - rect.height / 2 + offY;
         const tx = Math.floor(wx / effTile);

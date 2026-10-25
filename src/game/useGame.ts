@@ -1107,7 +1107,8 @@ export function useGame() {
   // --- Gamma v0.3.0 Visual Controls ---
   const setZoom = (zoom: number) => {
     const gg = g();
-    gg.zoom = Math.max(0.8, Math.min(3.5, zoom));
+    // Same 1.0–3.2 range as the Settings slider; round away float drift from wheel steps.
+    gg.zoom = Math.round(Math.max(1.0, Math.min(3.2, zoom)) * 10) / 10;
     bump();
   };
 

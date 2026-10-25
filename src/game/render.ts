@@ -63,8 +63,14 @@ const ROCK_NAME: Record<string, string> = {
   G: "Gold",
 };
 
+// On-screen tile size in whole pixels. Every caller (render, camera, clamp,
+// click-picking) must use this so the drawn grid and the maths agree.
+export function tileSize(zoom: number): number {
+  return Math.round(TILE * (zoom || 2.2));
+}
+
 export function clampCam(cam: Cam, w: number, h: number, zoom: number): Cam {
-  const effTile = TILE * zoom;
+  const effTile = tileSize(zoom);
   const mapW = MAP_W * effTile;
   const mapH = MAP_H * effTile;
   
@@ -1288,7 +1294,7 @@ export function render(
 ) {
   ctx.clearRect(0, 0, w, h);
   
-  const effTile = Math.round(TILE * (g.zoom || 2.2));
+  const effTile = tileSize(g.zoom);
   const sx = Math.floor(cam.x - w / 2);
   const sy = Math.floor(cam.y - h / 2);
   // Sub-tile interpolated hero position (smooth follow) when supplied.
