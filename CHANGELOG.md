@@ -3,6 +3,61 @@
 All notable changes to **ForgeBound**. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project follows semver.
 
+## [0.4.3] — Gamma v0.4.3 · Quests — 2026-10-26
+
+The first real goals beyond grinding: Old Maro's quests that teach the
+valley's basics, daily jobs for Roka, and conversations to go with them.
+
+### Added
+
+- Conversations: talking to Old Maro or Roka opens a dialogue box along the
+  bottom of the world view, with their portrait (their own figure), their
+  lines page by page and your replies as buttons. Space or Enter reads on,
+  number keys pick a reply, and Escape or walking away ends it
+- Seven quests from Old Maro, in three chains:
+  - Combat: Meat for the Table (hens, then bury their bones) → The North
+    Pasture (cows, then cook a steak) → Trouble in Grublin Gully (defeat
+    five Goblin Warriors; needs 3 quest points)
+  - Smithing: The Smith's First Lesson (logs for the fire, three bronze
+    bars, a bronze dagger) → Plate and Hammer (a bronze platebody) → An
+    Iron Will (iron ore, an iron bar, an iron dagger; choose an iron axe or
+    pickaxe as the reward)
+  - Fishing: A Fisher's Patience (net, cook and eat shrimp; rewards the fly
+    fishing rod)
+- Steps that ask you to do something (smelt, cook, mine, defeat, bury,
+  eat) only count the exact thing asked for, from the moment that step
+  starts, so a bronze bar step won't count iron bars. Items to hand in come
+  from the backpack, and using one on Maro hands it in straight away
+- Quest points (9 to earn), shown in the new Quests tab and used to gate
+  harder quests
+- Roka's Supply Runs: four daily jobs (farm eggs, feathers, raw chicken,
+  logs), each paying double the shop's price and each doable once per day
+- XP bottles as quest rewards: one per skill in small, medium and large
+  (150, 400 and 1,000 XP), drawn as glowing flasks in the skill's colour.
+  Left-click pours one; a Combat XP bottle asks whether to pour it into
+  Attack, Strength or split it between both
+- Quest markers over Maro's and Roka's heads: a gold ! for a new quest, a
+  blue ! for a daily job, and a ? (gold or blue) when something's ready to
+  hand in
+- Quests tab: quests you've accepted, the current step with a live count
+  (e.g. 2/3), what's ready to report, finished quests and any Supply Run
+- Firemaking joins the skills list (coming in a future update)
+
+### Changed
+
+- Steak needs level 5 Cooking (was 15) and heals 6 (was 9), so food climbs
+  shrimp 3 → chicken 4 → steak 6 → trout 7
+- When a foe stands on loot, left-click attacks it; Take is still in the
+  right-click menu
+- Fishing spots are patches of churned water full of rising, popping
+  bubbles (with foam streaks on the trout current) and the odd leaping
+  fish, instead of one small circle
+- Roka's "Talk to" opens a conversation (trade, work and advice); left-click
+  still opens the shop
+- Side-panel tabs are tighter so five fit side by side
+- Saves move to version 2 for quests and Supply Runs; older saves load with
+  nothing started
+
 ## [0.4.2] — Gamma v0.4.2 · Prayer — 2026-10-26
 
 Something to spend Prayer on, a side panel you can arrange, and a minimap

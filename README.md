@@ -3,7 +3,7 @@
 **A single-player action-RPG that lives in one HTML file.**
 Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
-`v0.4.2 — Gamma Prayer` · `100% offline` · `MIT licensed`
+`v0.4.3 — Gamma Quests` · `100% offline` · `MIT licensed`
 
 ---
 
@@ -11,7 +11,21 @@ Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
 [![Sponsor](https://raw.githubusercontent.com/djsaintg/djsaintg/main/sponsor.svg)](https://buymeacoffee.com/djsaintg)
 
-## What's new in v0.4.2
+## What's new in v0.4.3
+
+- **Your first quests** — Old Maro teaches the valley's basics in three
+  chains: combat (hens, cows, then the goblins), smithing (bronze up to
+  iron) and fishing (catch, cook, eat)
+- **Conversations** — a proper dialogue box with portraits and replies to
+  choose from
+- **Daily jobs for Roka** — four Supply Runs that pay double, once a day
+- **XP bottles** — quest rewards that pour XP into the skill you trained;
+  the Combat bottle lets you choose Attack, Strength or both
+- **Quest markers** — a gold ! for a new quest, blue for a daily job, and a
+  ? when it's time to hand in
+- **Bubbling fishing spots** — fizzing water and the odd leaping fish
+
+## v0.4.2 — Prayer
 
 - **Prayer with teeth** — prayer points and four combat blessings to call
   on in a fight: Stoneskin, Ox's Might, Mending Light and Clear Eye
@@ -199,7 +213,7 @@ Ten skills are live, all running on the authentic-feeling XP curve
 | Mining ⛏        | Copper/tin at 1, iron at 10, coal at 20, gold at 40 | —                            |
 | Fishing 🐟      | Shrimp by hand; trout at the eastern current      | Trout: level 20 + rod + feather|
 | Smithing 🔨     | Smelt bars at the furnace, forge blades at the anvil | Steel: level 30             |
-| Cooking 🍳      | Cook catch, meat and eggs at the campfire         | Steak: level 15, heals 9       |
+| Cooking 🍳      | Cook catch, meat and eggs at the campfire         | Steak: level 5, heals 6        |
 
 The full 23-skill grid is already stubbed in the UI — the rest light up as
 quests and deeper systems arrive.
@@ -221,6 +235,9 @@ quests and deeper systems arrive.
 | Left-click furnace / anvil / campfire       | Open crafting, then pick a recipe                |
 | Left-click the bank booth                   | Deposit and withdraw                             |
 | Left-click Roka                             | Buy tools, sell your haul                        |
+| Talk to someone with a ! over their head    | Take on a quest (gold) or a daily job (blue)     |
+| Talk to someone with a ? over their head    | Hand in a finished quest step                    |
+| Click an XP bottle in your inventory        | Pour its XP into the skill (combat: choose)      |
 | Click food in your inventory                | Eat it (+HP)                                     |
 | Click a tool in your inventory              | Wield it — better tiers work faster              |
 | Click ore, bars or raw food, then a target  | Use it there — furnace, anvil, campfire, bank    |
@@ -287,7 +304,7 @@ reach the login screen only through their `- **Teaser:**` lines.
 - [x] v0.4.0 — Visuals: jointed people & livestock, 4-way movement, per-job animations, gear icons, new rocks
 - [x] v0.4.1 — Hands-On: right-click menus, drag / select / use-on backpack, skill guides, minimap zoom
 - [x] v0.4.2 — Prayer: prayer points, combat blessings, an altar, docked side panels, new minimap
-- [ ] v0.4.3 — Quests: gathering quests and a first Prayer quest
+- [x] v0.4.3 — Quests: Old Maro's quest chains, Roka's daily Supply Runs, XP bottles, quest markers
 - [ ] v0.4.4 — Sound & Score: original background music and a full sound-effects pass
 - [ ] v0.5.0 — a ~5× wider realm, the Wildwood, Fletching & Ranged
 - [ ] v0.6.0 — the Vale square rebuilt as a proper village

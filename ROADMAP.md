@@ -22,37 +22,6 @@ these up only if shimmer or flashes show up again.
 
 ---
 
-## v0.4.3 — Quests (planned)
-
-The first real goals beyond grinding. Comes last in the v0.4.x run so quests
-can lean on menus, the backpack and Prayer.
-
-### 📜 Basic Gathering Quests
-- **Teaser:** Your first quests — townsfolk in need of fish, logs and ore
-- A quest-giver NPC (or a notice board in Vale Square) hands out simple
-  fetch quests: "Bring me 10 logs", "5 raw trout", "8 copper + 8 tin ore".
-- Rewards: coins, a skill XP lamp, and occasionally a tool/gear upgrade.
-- A **Quests** tab in the side panel: available / in progress / complete,
-  with a progress counter (e.g. 6/10 logs) that updates from the backpack.
-- Save format: add a `quests` map to the save payload (bump `SAVE_VERSION`
-  with a migration so existing saves keep working).
-
-- **Built last on purpose:** quests can then use everything from v0.4.0–
-  v0.4.2 — Talk menus, handing items over with *use on*, and Prayer.
-- **First Prayer quest idea:** an old crypt beneath the chapel/shrine,
-  sealed since the goblins came. Bring the priest bones and candles (or
-  similar), clear the restless dead inside, and earn a new blessing or a
-  blessed altar that recharges faster. A small instanced area or a fenced-off
-  corner of the map works until the v0.5.0 world expansion.
-
-**Open questions:**
-- Fixed hand-written quest list, or repeatable randomised "daily" tasks too?
-- Do turned-in items get consumed (yes, probably) and must they be in the
-  backpack, or can the bank count?
-- Quest points as a separate tally / unlock gate for later content?
-
----
-
 ## v0.4.4 — Sound & Score (planned)
 
 Give the realm a voice: a full sound-effects pass and background music with
@@ -159,6 +128,27 @@ current valley becomes one region of many. First new zone, working name:
 - Exact target size, and grow outward evenly or mostly in one direction?
 - Fast travel (signposts / teleports) once the map is large, or walk only?
 - Does the hero's walk speed need a bump (or a run toggle) for longer trips?
+
+### 🔥 Firemaking
+- **Teaser:** Light your own fires — anywhere the valley allows
+- On the skills list since v0.4.3 (`impl: false`). Logs + a tinderbox make a
+  fire on the hero's tile that burns out after a while; cook on it like the
+  square's campfire. Oak logs at a higher level.
+- Pays off a thread from Old Maro's "The Smith's First Lesson", where he
+  takes your logs "until I teach you to light a fire of your own". A short
+  Maro quest can teach it.
+- Pairs naturally with Fletching below: both turn logs into something.
+
+### 🕯️ The Crypt (first Prayer quest)
+- **Teaser:** Something stirs in the old crypt beneath the shrine
+- Held back from v0.4.3 until there's somewhere to build it: an old crypt
+  beneath the chapel / shrine, sealed since the goblins came. Bring the
+  priest bones and candles (or similar), clear the restless dead inside,
+  and earn a new blessing or a blessed altar that recharges faster.
+- Needs its own small area: an instanced room, or a corner of the expanded
+  map. Gate it with quest points (the combat chain gives most of them).
+- Builds on the v0.4.3 quest system as is: steps, dialogue, markers,
+  quest points and XP bottles (a Prayer bottle fits).
 
 ### 🏹 New Skills: Fletching & Ranged
 - **Teaser:** Fletching and Ranged — carve bows, fletch arrows, fight from afar
