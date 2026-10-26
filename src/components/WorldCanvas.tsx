@@ -26,6 +26,7 @@ function uiSignature(g: GameState): number {
     num(g.coins); num(g.hp); num(g.zoom); str(g.graphicsMode);
     num(+g.bankOpen); num(+g.shopOpen); num(+g.settingsOpen);
     num(g.selected ?? -7); str(g.guide ?? "");
+    num(Math.ceil(g.prayer)); num(-8); for (const b of g.blessings) str(b);
     if (g.stationUI) { str(g.stationUI.station); num(g.stationUI.x); num(g.stationUI.y); } else num(-4);
     if (g.pendingStation) { str(g.pendingStation.kind); num(g.pendingStation.x); num(g.pendingStation.y); } else num(-5);
     // The log is capped at 90 entries, so key it by the newest id, not length.

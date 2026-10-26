@@ -1,58 +1,206 @@
-import { useState } from "react";
-import type { GameState, ItemId, ToolSlot } from "../game/types";
+import { Fragment, useRef, useState } from "react";
+import type { GameState, ItemId, MenuOption, ToolSlot } from "../game/types";
 import type { GameApi } from "../game/useGame";
-import { ITEMS, SELL_RATIO } from "../game/data";
+import { BLESSINGS, BLESSING_BY_ID, ITEMS, SELL_RATIO } from "../game/data";
 import { SKILLS, fmt, levelForXp, progressIntoLevel, totalLevel } from "../game/xp";
 import { ItemIcon } from "./ItemIcon";
 import { useContextMenu, useLongPress } from "./ContextMenu";
 import { SLOT_MIME, slotDragProps, useTouchSlotDrag } from "./SlotDrag";
+import { ResizeHandle } from "./ResizeHandle";
+import { TAB_LABEL, dockTab, resetLayout, selectTab, setPaneHeight, usePaneLayout, type Pane, type TabId } from "./paneLayout";
 
 const SLOT_LABEL: Record<ToolSlot, string> = {
   weapon: "Weapon", axe: "Axe", pick: "Pickaxe", rod: "Fishing rod", armor: "Armor",
 };
 
+/** dataTransfer type for a side-panel tab being dragged to another pane. */
+const TAB_MIME = "application/x-forgebound-tab";
+
+/**
+ * The docked side column: one or more panes stacked top to bottom, each with
+ * its own tabs. Drag a tab onto another pane's tab bar to group it there, or
+ * onto the top / bottom half of a pane to dock it above / below. Right-click
+ * (or long-press) a tab for the same moves.
+ */
 export function SidePanels({ api, g }: { api: GameApi; g: GameState }) {
-  const [tab, setTab] = useState<"inv" | "skills" | "gear">("inv");
+  const panes = usePaneLayout();
+  const [dragTab, setDragTab] = useState<TabId | null>(null);
+  const colRef = useRef<HTMLDivElement>(null);
+  const paneRefs = useRef<(HTMLDivElement | null)[]>([]);
+
+  const maxHeight = (i: number) => {
+    const total = colRef.current?.clientHeight ?? 600;
+    return Math.max(MIN_PANE, total - (panes.length - 1 - i) * (MIN_PANE + 8) - 8 * i);
+  };
 
   return (
-    <div data-drop="keep" className="flex h-full min-h-0 flex-col rounded-md border border-[#5c4a2a]/80 bg-[#171310]/95 shadow-[inset_0_0_24px_rgba(0,0,0,0.7)]">
-      <div className="flex border-b border-[#3a2f1e]">
-        {(
-          [
-            ["inv", "Inventory"],
-            ["skills", "Skills"],
-            ["gear", "Gear"],
-          ] as const
-        ).map(([id, label]) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`font-display flex-1 py-2 text-[10.5px] font-bold tracking-[0.18em] transition-colors ${
-              tab === id
-                ? "border-b-2 border-[#d8b25c] bg-[#241c10] text-[#e8c876]"
-                : "text-[#8a7a52] hover:bg-[#1d1610] hover:text-[#c8b070]"
-            }`}
-          >
-            {label.toUpperCase()}
-          </button>
-        ))}
+    <div ref={colRef} data-drop="keep" className="flex h-full min-h-0 flex-col">
+      {panes.map((pane, i) => {
+        const last = i === panes.length - 1;
+        const style: React.CSSProperties = last
+          ? { flex: "1 1 0", minHeight: MIN_PANE }
+          : pane.height !== undefined
+          ? { flex: "0 0 auto", height: pane.height }
+          : { flex: "0 1 auto", minHeight: MIN_PANE };
+        return (
+          <Fragment key={pane.tabs.join()}>
+            <div
+              ref={(el) => { paneRefs.current[i] = el; }}
+              style={style}
+              className="flex min-h-0 flex-col rounded-md border border-[#5c4a2a]/80 bg-[#171310]/95 shadow-[inset_0_0_24px_rgba(0,0,0,0.7)]"
+            >
+              <TabBar api={api} panes={panes} i={i} dragTab={dragTab} setDragTab={setDragTab} />
+              <div className="relative flex min-h-0 flex-1 flex-col">
+                <div className="chat-scroll min-h-0 flex-1 overflow-y-auto p-2">
+                  {pane.active === "inv" && <Inventory api={api} g={g} />}
+                  {pane.active === "skills" && <Skills api={api} g={g} />}
+                  {pane.active === "prayer" && <Prayer api={api} g={g} />}
+                  {pane.active === "gear" && <Gear api={api} g={g} />}
+                </div>
+                {dragTab && <DockOverlay i={i} tab={dragTab} onDone={() => setDragTab(null)} />}
+              </div>
+            </div>
+            {!last && (
+              <ResizeHandle
+                axis="y"
+                reverse
+                size={pane.height ?? paneRefs.current[i]?.offsetHeight ?? 240}
+                onResize={(v) => setPaneHeight(i, Math.round(Math.max(MIN_PANE, Math.min(maxHeight(i), v))))}
+                onCommit={() => {}}
+                onReset={() => setPaneHeight(i, undefined)}
+              />
+            )}
+          </Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+/** A pane never gets shorter than this (px). */
+const MIN_PANE = 110;
+
+function TabBar({ api, panes, i, dragTab, setDragTab }: {
+  api: GameApi; panes: Pane[]; i: number; dragTab: TabId | null; setDragTab: (t: TabId | null) => void;
+}) {
+  const pane = panes[i];
+  const openMenu = useContextMenu();
+  const [over, setOver] = useState(false);
+
+  // The same moves as dragging, for right-click and touch
+  const tabMenu = (tab: TabId): MenuOption[] => {
+    const opts: MenuOption[] = [];
+    const name = TAB_LABEL[tab];
+    if (pane.tabs.length > 1) opts.push({ label: "Open below", target: name, run: () => dockTab(tab, { pane: i, where: "below" }) });
+    if (i > 0) opts.push({ label: "Move to pane above", target: name, run: () => dockTab(tab, { pane: i - 1, where: "tabs" }) });
+    if (i < panes.length - 1) opts.push({ label: "Move to pane below", target: name, run: () => dockTab(tab, { pane: i + 1, where: "tabs" }) });
+    opts.push({ label: "Reset panel layout", run: resetLayout });
+    return opts;
+  };
+
+  return (
+    <div
+      className={`flex border-b transition-colors ${over ? "border-[#d8b25c] bg-[#2a2010]" : "border-[#3a2f1e]"}`}
+      onDragOver={(e) => {
+        if (!e.dataTransfer.types.includes(TAB_MIME)) return;
+        e.preventDefault();
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        const tab = e.dataTransfer.getData(TAB_MIME) as TabId;
+        setOver(false);
+        setDragTab(null);
+        if (tab) dockTab(tab, { pane: i, where: "tabs" });
+      }}
+    >
+      {pane.tabs.map((id) => (
+        <TabButton
+          key={id}
+          label={TAB_LABEL[id]}
+          active={pane.active === id}
+          dragging={dragTab === id}
+          onSelect={() => selectTab(i, id)}
+          onMenu={(x, y) => openMenu(x, y, tabMenu(id))}
+          onDragStart={(e) => {
+            e.dataTransfer.setData(TAB_MIME, id);
+            e.dataTransfer.effectAllowed = "move";
+            // Let the browser grab the drag image before the overlays appear
+            requestAnimationFrame(() => setDragTab(id));
+          }}
+          onDragEnd={() => setDragTab(null)}
+        />
+      ))}
+      {i === 0 && (
         <button
           onClick={() => api.openSettings()}
           title="Engine settings — zoom, renderer & audio"
-          className="flex items-center px-2.5 text-[#8a7a52] transition-colors hover:bg-[#1d1610] hover:text-[#f0c858]"
+          className="ml-auto flex items-center px-2.5 text-[#8a7a52] transition-colors hover:bg-[#1d1610] hover:text-[#f0c858]"
         >
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin-slow">
             <circle cx="12" cy="12" r="3" />
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
           </svg>
         </button>
-      </div>
+      )}
+    </div>
+  );
+}
 
-      <div className="chat-scroll min-h-0 flex-1 overflow-y-auto p-2">
-        {tab === "inv" && <Inventory api={api} g={g} />}
-        {tab === "skills" && <Skills api={api} g={g} />}
-        {tab === "gear" && <Gear api={api} g={g} />}
-      </div>
+function TabButton({ label, active, dragging, onSelect, onMenu, onDragStart, onDragEnd }: {
+  label: string; active: boolean; dragging: boolean;
+  onSelect: () => void; onMenu: (x: number, y: number) => void;
+  onDragStart: (e: React.DragEvent) => void; onDragEnd: () => void;
+}) {
+  const press = useLongPress(onMenu);
+  return (
+    <button
+      draggable
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onClick={() => { if (!press.fired()) onSelect(); }}
+      onContextMenu={(e) => { e.preventDefault(); onMenu(e.clientX, e.clientY); }}
+      {...press.handlers}
+      title="Drag to another pane, or right-click to move"
+      className={`font-display flex-auto px-1 py-2 text-[10px] font-bold tracking-[0.08em] transition-colors ${
+        active
+          ? "border-b-2 border-[#d8b25c] bg-[#241c10] text-[#e8c876]"
+          : "text-[#8a7a52] hover:bg-[#1d1610] hover:text-[#c8b070]"
+      } ${dragging ? "opacity-40" : ""}`}
+    >
+      {label.toUpperCase()}
+    </button>
+  );
+}
+
+/** While a tab is dragged: drop on the top or bottom half of a pane to dock it there. */
+function DockOverlay({ i, tab, onDone }: { i: number; tab: TabId; onDone: () => void }) {
+  const [hot, setHot] = useState<"above" | "below" | null>(null);
+  const zone = (where: "above" | "below") => (
+    <div
+      onDragOver={(e) => {
+        if (!e.dataTransfer.types.includes(TAB_MIME)) return;
+        e.preventDefault();
+        setHot(where);
+      }}
+      onDragLeave={() => setHot(null)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setHot(null);
+        onDone();
+        dockTab(tab, { pane: i, where });
+      }}
+      className={`flex flex-1 items-center justify-center border-2 border-dashed text-[10.5px] font-bold uppercase tracking-[0.14em] transition-colors ${
+        hot === where ? "border-[#d8b25c] bg-[#3a2f14]/85 text-[#f0c858]" : "border-[#5c4a2a]/60 bg-[#0c0906]/55 text-[#8a7a52]"
+      }`}
+    >
+      Dock {TAB_LABEL[tab]} {where}
+    </div>
+  );
+  return (
+    <div className="absolute inset-0 z-10 flex flex-col gap-1 p-1.5">
+      {zone("above")}
+      {zone("below")}
     </div>
   );
 }
@@ -183,6 +331,70 @@ function Skills({ api, g }: { api: GameApi; g: GameState }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/** Prayer points and the blessings to spend them on. */
+function Prayer({ api, g }: { api: GameApi; g: GameState }) {
+  const lvl = levelForXp(g.xp.prayer);
+  const pts = Math.ceil(g.prayer);
+  const drainPerMin = g.blessings.reduce((sum, id) => sum + 60000 / BLESSING_BY_ID[id].drainMs, 0);
+  return (
+    <div>
+      <div className="mb-2 rounded-sm border border-[#3a2f1e] bg-[#0f0b08] px-2.5 py-2">
+        <div className="flex items-center justify-between">
+          <span className="font-display text-[10px] font-bold tracking-[0.2em] text-[#a8905a]">PRAYER POINTS</span>
+          <span className="font-display text-[15px] font-black text-[#e8e4f8]">{pts}<span className="text-[11px] text-[#8a7a52]"> / {lvl}</span></span>
+        </div>
+        <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#0c0906]">
+          <div
+            className="h-full rounded-full transition-[width] duration-300"
+            style={{ width: `${Math.min(1, g.prayer / lvl) * 100}%`, background: "linear-gradient(90deg, #9ad8ef, #f4f1ff)" }}
+          />
+        </div>
+        <div className="mt-1 text-[10px] text-[#6a5a3a]">
+          {g.blessings.length ? `Draining ${drainPerMin.toFixed(1).replace(/\.0$/, "")} point${drainPerMin === 1 ? "" : "s"} a minute` : "Recharge at the altar in Vale Square"}
+        </div>
+      </div>
+      <div className="flex flex-col gap-1">
+        {BLESSINGS.map((b) => {
+          const locked = lvl < b.level;
+          const on = g.blessings.includes(b.id);
+          return (
+            <button
+              key={b.id}
+              onClick={() => api.toggleBlessing(b.id)}
+              aria-pressed={on}
+              title={locked ? `Needs level ${b.level} Prayer` : `${b.effect}. Drains 1 point every ${b.drainMs / 1000}s. Click to turn ${on ? "off" : "on"}.`}
+              className={`flex items-center gap-2 rounded-sm border px-2 py-1.5 text-left transition-all ${
+                on
+                  ? "border-[#e8e4f8] bg-gradient-to-b from-[#2c2a3a] to-[#1a1824] shadow-[0_0_10px_rgba(220,220,255,0.3)]"
+                  : locked
+                  ? "border-[#241c12] bg-[#120e09] opacity-45"
+                  : "border-[#3a2f1e] bg-[#1a140c] hover:border-[#d8b25c]"
+              }`}
+            >
+              <span
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border text-[13px]"
+                style={{ borderColor: on ? "#e8e4f8" : "#5c4a2a", background: "rgba(0,0,0,0.35)" }}
+              >
+                {locked ? "🔒" : b.icon}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className={`block text-[12px] font-bold ${on ? "text-[#f4f1ff]" : "text-[#e0d6c0]"}`}>{b.name}</span>
+                <span className="block text-[10px] leading-tight text-[#8a7a52]">{b.effect}</span>
+              </span>
+              <span className={`shrink-0 text-[10.5px] font-bold ${locked ? "text-[#ff8a72]" : on ? "text-[#e8e4f8]" : "text-[#c8b070]"}`}>
+                {on ? "ON" : `Lvl ${b.level}`}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-[10.5px] leading-snug text-[#6a5a3a]">
+        Your Prayer level is your most prayer points. Bury bones to raise it. Blessings stay on until you switch them off or your points run out.
+      </p>
     </div>
   );
 }

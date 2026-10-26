@@ -1,7 +1,7 @@
 // Skill guides, built from the game's own data tables so new trees, rocks,
 // recipes and gear show up in them without touching this file.
 import type { ItemCat, ItemId, SkillId } from "./types";
-import { BURY_XP, FOES, ITEMS, RECIPES, RESOURCES, STATION_NAMES, SWING_SPEED, TOOL_SPEED } from "./data";
+import { BLESSINGS, BURY_XP, FOES, ITEMS, RECIPES, RESOURCES, STATION_NAMES, SWING_SPEED, TOOL_SPEED } from "./data";
 
 export interface GuideRow {
   label: string;
@@ -116,8 +116,11 @@ export function skillGuide(skill: SkillId): { sections: GuideSection[]; notes: s
       sections.push({
         title: "Offerings",
         rows: [{ label: "Bury bones", level: 1, item: "bones", detail: `+${BURY_XP} xp each` }],
+      }, {
+        title: "Blessings",
+        rows: BLESSINGS.map((b) => ({ label: `${b.icon} ${b.name}`, level: b.level, detail: `${b.effect} · 1 point / ${b.drainMs / 1000}s` })),
       });
-      notes.push("Bones drop from every foe. Blessings and altars are being forged.");
+      notes.push("Your Prayer level is your most prayer points. Switch blessings on in the Prayer tab, and pray at the altar in Vale Square to refill them. Bones drop from every foe.");
       break;
   }
 

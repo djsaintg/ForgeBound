@@ -45,7 +45,8 @@ export function useStoredSize(key: string, initial: number, min: number, max: nu
 
 /**
  * Drag bar on a panel edge. `axis` "x" resizes width (dragging left grows it),
- * "y" resizes height (dragging up grows it). Double-click restores the default.
+ * "y" resizes height (dragging up grows it); `reverse` flips that, for a bar
+ * under the panel it sizes. Double-click restores the default.
  */
 export function ResizeHandle({
   axis,
@@ -53,6 +54,7 @@ export function ResizeHandle({
   onResize,
   onCommit,
   onReset,
+  reverse = false,
   className = "",
 }: {
   axis: "x" | "y";
@@ -60,6 +62,7 @@ export function ResizeHandle({
   onResize: (v: number) => void;
   onCommit: (v: number) => void;
   onReset: () => void;
+  reverse?: boolean;
   className?: string;
 }) {
   const drag = useRef<{ start: number; from: number; last: number } | null>(null);
@@ -76,7 +79,7 @@ export function ResizeHandle({
     const d = drag.current;
     if (!d) return;
     const pos = axis === "x" ? e.clientX : e.clientY;
-    d.last = d.from + (d.start - pos);
+    d.last = d.from + (reverse ? pos - d.start : d.start - pos);
     onResize(d.last);
   };
   const end = () => {

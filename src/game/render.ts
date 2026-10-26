@@ -968,6 +968,73 @@ function drawObject64(ctx: CanvasRenderingContext2D, ch: string, x: number, y: n
     }
   } else if (ch === "=") {
     drawFence(ctx, x, y, px, py, s);
+  } else if (ch === "L") {
+    drawAltar(ctx, cx, py, s, time);
+  }
+}
+
+// --- Prayer altar -----------------------------------------------------------
+// A carved stone altar under a white cloth, two candles and a soft holy glow
+// that breathes slowly, so it reads as somewhere to pray from across the square.
+function drawAltar(ctx: CanvasRenderingContext2D, cx: number, py: number, s: number, time: number) {
+  const breathe = 0.5 + 0.5 * Math.sin(time / 900);
+
+  const glow = ctx.createRadialGradient(cx, py + s * 0.4, 2, cx, py + s * 0.4, s * 0.75);
+  glow.addColorStop(0, `rgba(255,248,210,${0.22 + breathe * 0.14})`);
+  glow.addColorStop(1, "rgba(255,240,190,0)");
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(cx, py + s * 0.4, s * 0.75, 0, Math.PI * 2);
+  ctx.fill();
+
+  // shadow
+  ctx.fillStyle = "rgba(0,0,0,0.4)";
+  ctx.beginPath();
+  ctx.ellipse(cx, py + s * 0.86, s * 0.4, s * 0.09, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  // stepped plinth and body
+  ctx.fillStyle = "#6f6a62";
+  ctx.fillRect(cx - s * 0.4, py + s * 0.74, s * 0.8, s * 0.1);
+  const body = ctx.createLinearGradient(0, py + s * 0.42, 0, py + s * 0.76);
+  body.addColorStop(0, "#c9c3b5");
+  body.addColorStop(1, "#8d877b");
+  ctx.fillStyle = body;
+  ctx.fillRect(cx - s * 0.32, py + s * 0.44, s * 0.64, s * 0.32);
+  // carved panel
+  ctx.strokeStyle = "rgba(60,55,48,0.55)";
+  ctx.lineWidth = Math.max(1, s * 0.02);
+  ctx.strokeRect(cx - s * 0.22, py + s * 0.5, s * 0.44, s * 0.2);
+  ctx.fillStyle = "rgba(60,55,48,0.5)";
+  ctx.fillRect(cx - s * 0.015, py + s * 0.53, s * 0.03, s * 0.14);
+  ctx.fillRect(cx - s * 0.06, py + s * 0.57, s * 0.12, s * 0.03);
+
+  // top slab with a white cloth and gold trim hanging over the front
+  ctx.fillStyle = "#ddd8cc";
+  ctx.fillRect(cx - s * 0.38, py + s * 0.38, s * 0.76, s * 0.07);
+  ctx.fillStyle = "#f4f1ea";
+  ctx.fillRect(cx - s * 0.16, py + s * 0.36, s * 0.32, s * 0.2);
+  ctx.fillStyle = "#d8b25c";
+  ctx.fillRect(cx - s * 0.16, py + s * 0.54, s * 0.32, s * 0.025);
+
+  // candles with flickering flames
+  for (const side of [-1, 1]) {
+    const kx = cx + side * s * 0.27;
+    ctx.fillStyle = "#efe6cf";
+    ctx.fillRect(kx - s * 0.025, py + s * 0.24, s * 0.05, s * 0.14);
+    const flick = Math.sin(time / 110 + side * 2) * s * 0.008;
+    ctx.fillStyle = "rgba(255,200,80,0.35)";
+    ctx.beginPath();
+    ctx.arc(kx, py + s * 0.2, s * 0.07, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#ffcc4a";
+    ctx.beginPath();
+    ctx.ellipse(kx + flick, py + s * 0.2, s * 0.022, s * 0.045, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = "#fff6d0";
+    ctx.beginPath();
+    ctx.ellipse(kx + flick, py + s * 0.21, s * 0.01, s * 0.022, 0, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
@@ -1513,7 +1580,7 @@ export function render(
         const dep = !!(g.depleted[key] && time < g.depleted[key]);
         if (is64) drawObject64(ctx, och, x, y, px, py, effTile, time, dep);
         else {
-          ctx.fillStyle = dep ? "#444" : "#a88";
+          ctx.fillStyle = dep ? "#444" : och === "L" ? "#eeeaf8" : "#a88";
           ctx.fillRect(px + effTile * 0.2, py + effTile * 0.2, effTile * 0.6, effTile * 0.6);
         }
       }

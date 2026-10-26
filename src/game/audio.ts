@@ -128,6 +128,17 @@ export const sfx = {
     tone(660, 0.12, { type: "sine", vol: 0.07 });
     tone(880, 0.18, { type: "sine", vol: 0.06, delay: 0.08 });
   },
+  // Prayer (v0.4.2)
+  bless() {
+    tone(587.33, 0.22, { type: "sine", vol: 0.06 });
+    tone(880, 0.3, { type: "sine", vol: 0.05, delay: 0.07 });
+  },
+  unbless() {
+    tone(660, 0.18, { type: "sine", vol: 0.05, glide: 440 });
+  },
+  pray() {
+    [392, 493.88, 587.33, 783.99].forEach((n, i) => tone(n, 0.5, { type: "sine", vol: 0.05, delay: i * 0.12 }));
+  },
   levelUp() {
     const notes = [523.25, 659.25, 783.99, 1046.5];
     notes.forEach((n, i) => tone(n, 0.28, { type: "triangle", vol: 0.1, delay: i * 0.09 }));

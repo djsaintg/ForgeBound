@@ -2,6 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import { VERSION } from "../version";
 import type {
   Action,
+  BlessingId,
   ChatKind,
   GameState,
   GroundItem,
@@ -15,12 +16,14 @@ import type {
   ToolSlot,
 } from "./types";
 import {
+  BLESSING_BY_ID,
   BURY_XP,
   FOES,
   GROUND_ITEM_MS,
   ITEM_EXAMINE,
   ITEMS,
   MARO_LINES,
+  MENDING_MS,
   OBJ_TO_RES,
   OBJ_TO_STATION,
   RECIPE_BY_ID,
@@ -122,6 +125,8 @@ export function freshState(name: string): GameState {
     selected: null,
     guide: null,
     pendingTake: null,
+    prayer: 1,
+    blessings: [],
   };
 }
 
@@ -143,6 +148,7 @@ export function saveGame(g: GameState): boolean {
       graphicsMode: g.graphicsMode,
       groundItems: g.groundItems,
       combatXp: g.combatXp,
+      prayer: g.prayer,
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
     return true;
@@ -179,6 +185,9 @@ export function loadGame(): GameState | null {
     const cx = p.combatXp ?? {};
     g.combatXp = { attack: cx.attack !== false, strength: cx.strength !== false };
     if (!g.combatXp.attack && !g.combatXp.strength) g.combatXp = { attack: true, strength: true };
+    // Saves from before Prayer points start full
+    const maxPrayer = levelForXp(g.xp.prayer);
+    g.prayer = typeof p.prayer === "number" ? Math.max(0, Math.min(maxPrayer, p.prayer)) : maxPrayer;
     return g;
   } catch {
     return null;
@@ -203,6 +212,7 @@ export function useGame() {
   const [, setTick] = useState(0);
   const bump = useCallback(() => setTick((t) => t + 1), []);
   const moveAcc = useRef(0);
+  const mendAcc = useRef(0);
   const cowSeed = useRef(Math.random() * 1000);
 
   const g = (): GameState => {
@@ -366,31 +376,73 @@ export function useGame() {
     }
   };
 
-  /** What to say once the hero reaches the NPC they set off to talk to. */
-  const pendingSay = useRef<(() => void) | null>(null);
+  /** What to do once the hero reaches the NPC or altar they set off for. */
+  const pendingDo = useRef<(() => void) | null>(null);
 
   /**
-   * Speak with (or hand something to) the NPC at x,y. Within TALK_RANGE tiles
-   * it happens at once; further away the hero walks over first.
+   * Do something at x,y that needs the hero close by: within `range` tiles
+   * it happens at once, further away the hero walks over first.
    */
-  const speakTo = (x: number, y: number, say: () => void) => {
+  const approach = (kind: "talk" | "pray", x: number, y: number, range: number, act: () => void) => {
     const gg = g();
-    if (Math.max(Math.abs(gg.x - x), Math.abs(gg.y - y)) <= TALK_RANGE) {
-      say();
+    if (Math.max(Math.abs(gg.x - x), Math.abs(gg.y - y)) <= range) {
+      act();
       return;
     }
     const p = findPath(gg.x, gg.y, x, y);
     if (!p) {
-      chat("err", "You can't reach them from here.");
+      chat("err", "You can't reach that from here.");
       sfx.error();
       return;
     }
     closeWindows();
     cancelAction();
     gg.path = p;
-    gg.pendingStation = { kind: "talk", x, y };
-    pendingSay.current = say;
+    gg.pendingStation = { kind, x, y };
+    pendingDo.current = act;
   };
+
+  /** Speak with (or hand something to) the NPC at x,y. */
+  const speakTo = (x: number, y: number, say: () => void) => approach("talk", x, y, TALK_RANGE, say);
+
+  const maxPrayer = () => levelForXp(g().xp.prayer);
+
+  /** Kneel at an altar and refill prayer points. */
+  const prayAt = (x: number, y: number) =>
+    approach("pray", x, y, 1, () => {
+      const gg = g();
+      const max = maxPrayer();
+      if (gg.prayer >= max) {
+        chat("info", "You kneel at the altar. Your prayer is already full.");
+      } else {
+        gg.prayer = max;
+        emote.buryAt = performance.now();
+        chat("sys", `${gg.name} kneels at the altar and is filled with light · prayer restored to ${max}.`);
+      }
+      sfx.pray();
+    });
+
+  /** Switch a blessing on or off from the Prayer tab. */
+  const toggleBlessing = (id: BlessingId) => {
+    const gg = g();
+    const b = BLESSING_BY_ID[id];
+    if (gg.blessings.includes(id)) {
+      gg.blessings = gg.blessings.filter((q) => q !== id);
+      sfx.unbless();
+    } else if (levelForXp(gg.xp.prayer) < b.level) {
+      chat("err", `${b.name} needs level ${b.level} Prayer.`);
+      sfx.error();
+    } else if (gg.prayer <= 0) {
+      chat("err", "You have no prayer points left. Recharge them at the altar in Vale Square.");
+      sfx.error();
+    } else {
+      gg.blessings = [...gg.blessings, id];
+      sfx.bless();
+    }
+    bump();
+  };
+
+  const blessed = (id: BlessingId) => g().blessings.includes(id);
 
   const pickUp = (id: number) => {
     const gg = g();
@@ -641,6 +693,16 @@ export function useGame() {
         ],
         use: nothing,
       });
+    } else if (ch === "L") {
+      const max = maxPrayer();
+      out.push({
+        name: "Altar",
+        actions: [
+          { label: "Pray at", target: "Altar", run: () => prayAt(x, y) },
+          { ...inspect(`Altar: A quiet stone altar. Pray here to restore your prayer points (${Math.floor(gg.prayer)}/${max}).`), target: "Altar" },
+        ],
+        use: nothing,
+      });
     } else if (SCENERY[ch]) {
       const [name, text] = SCENERY[ch];
       out.push({
@@ -872,8 +934,8 @@ export function useGame() {
     const strLvl = levelForXp(gg.xp.strength || 0);
     const attLvl = levelForXp(gg.xp.attack || 0);
     const wpnTier = toolTier("weapon");
-    const accuracyRoll = Math.random() + attLvl * 0.02;
-    const maxHit = Math.max(2, Math.floor(1 + strLvl / 3 + wpnTier * 1.5));
+    const accuracyRoll = Math.random() + attLvl * 0.02 + (blessed("clear_eye") ? 0.1 : 0);
+    const maxHit = Math.max(2, Math.floor(1 + strLvl / 3 + wpnTier * 1.5)) + (blessed("ox_might") ? 1 : 0);
     const hitDmg = accuracyRoll > 0.15 ? Math.floor(Math.random() * maxHit) + 1 : 0;
 
     target.hp = Math.max(0, target.hp - hitDmg);
@@ -946,6 +1008,7 @@ export function useGame() {
     if (enemyMax > 0) {
       const armorBonus = toolTier("armor") * 1;
       let enemyDmg = Math.max(0, Math.floor(Math.random() * (enemyMax + 1)) - (armorBonus > 0 && Math.random() < 0.5 ? 1 : 0));
+      if (blessed("stoneskin") && Math.random() < 0.15) enemyDmg = 0;
       if (enemyDmg > 0) {
         gg.hp = Math.max(0, gg.hp - enemyDmg);
         sfx.hurt();
@@ -1006,9 +1069,9 @@ export function useGame() {
         if (p.kind === "bank") gg.bankOpen = true;
         else if (p.kind === "shop") gg.shopOpen = true;
         else if (p.kind === "craft" && p.station) gg.stationUI = { station: p.station, x: p.x, y: p.y };
-        if (p.kind === "talk") {
-          pendingSay.current?.();
-          pendingSay.current = null;
+        if (p.kind === "talk" || p.kind === "pray") {
+          pendingDo.current?.();
+          pendingDo.current = null;
         } else sfx.click();
         gg.pendingStation = null;
       }
@@ -1146,6 +1209,25 @@ export function useGame() {
         }
       }
     }
+
+    // Blessings drain prayer points; when they run dry every blessing fades
+    if (gg.blessings.length) {
+      gg.prayer -= gg.blessings.reduce((sum, id) => sum + dt / BLESSING_BY_ID[id].drainMs, 0);
+      if (gg.prayer <= 0) {
+        gg.prayer = 0;
+        gg.blessings = [];
+        chat("err", "You have run out of prayer points. Your blessings fade. Recharge at the altar in Vale Square.");
+        sfx.unbless();
+      }
+    }
+    if (blessed("mending") && gg.hp < gg.maxHp) {
+      mendAcc.current += dt;
+      if (mendAcc.current >= MENDING_MS) {
+        mendAcc.current -= MENDING_MS;
+        gg.hp = Math.min(gg.maxHp, gg.hp + 1);
+        addFloat("+1", "rgb(120,230,140)");
+      }
+    } else mendAcc.current = 0;
 
     // A held item that got used up or moved away is put down
     if (gg.selected !== null && !gg.inv[gg.selected]) gg.selected = null;
@@ -1567,6 +1649,7 @@ export function useGame() {
       closeOverlays,
       openSettings,
       openGuide,
+      toggleBlessing,
       saveNow,
       setZoom,
       toggleGraphicsMode,

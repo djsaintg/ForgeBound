@@ -179,7 +179,7 @@ export interface GameState {
   y: number;
   path: { x: number; y: number }[];
   action: Action | null;
-  pendingStation: { kind: "craft" | "bank" | "shop" | "talk"; station?: StationId; x: number; y: number } | null;
+  pendingStation: { kind: "craft" | "bank" | "shop" | "talk" | "pray"; station?: StationId; x: number; y: number } | null;
   stationUI: { station: StationId; x: number; y: number } | null;
   depleted: Record<string, number>;
   chat: ChatMsg[];
@@ -207,6 +207,24 @@ export interface GameState {
   guide: SkillId | null;
   /** Ground item (by id) the hero is walking over to take. */
   pendingTake: number | null;
+  // Prayer v0.4.2
+  /** Current prayer points; the maximum is the Prayer level. Fractional while draining. */
+  prayer: number;
+  /** Blessings switched on. */
+  blessings: BlessingId[];
+}
+
+export type BlessingId = "stoneskin" | "ox_might" | "mending" | "clear_eye";
+
+export interface BlessingDef {
+  id: BlessingId;
+  name: string;
+  icon: string;
+  level: number;
+  /** What it does, in a few words. */
+  effect: string;
+  /** Milliseconds per prayer point drained while it's on. */
+  drainMs: number;
 }
 
 /** One line of a right-click menu. The first entry is what left-click does. */

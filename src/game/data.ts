@@ -1,4 +1,6 @@
 import type {
+  BlessingDef,
+  BlessingId,
   ItemDef,
   ItemId,
   RecipeDef,
@@ -130,6 +132,7 @@ export const MARO_LINES = [
   "Don't forget to bury monster bones from your backpack—it honors the departed and earns valuable Prayer XP!",
   "Chop trees in the Westwood, then smelt copper and tin into bronze at the furnace north of Vale Square.",
   "Keldrek Mine is east along the road. Iron hides at level 10, coal at 20, and gold at 40.",
+  "Bury bones to grow your Prayer, then call on blessings in the Prayer tab. When your prayer runs dry, kneel at the altar in the square.",
   "Everything you own can be banked at the booth. Try toggling between 8-bit Legacy and 64-bit Remastered mode in the settings!",
 ];
 
@@ -203,3 +206,18 @@ export const FOES: Record<FoeId, { name: string; level: number; hp: number; abou
   goblin: { name: "Goblin Warrior", level: 5, hp: 12, about: "A scrappy goblin of the gully clan." },
   brigand: { name: "Bramble Brigand", level: 11, hp: 22, about: "A hulking brute of the deep gully. Hits hard." },
 };
+
+/** Combat blessings, lowest level first. Effects are applied in useGame's combat round. */
+export const BLESSINGS: BlessingDef[] = [
+  { id: "stoneskin", name: "Stoneskin", icon: "🪨", level: 1, effect: "Foes' blows miss 15% more often", drainMs: 20000 },
+  { id: "ox_might", name: "Ox's Might", icon: "🐂", level: 4, effect: "+1 maximum hit", drainMs: 20000 },
+  { id: "mending", name: "Mending Light", icon: "💗", level: 7, effect: "Regain 1 HP every 6 seconds", drainMs: 30000 },
+  { id: "clear_eye", name: "Clear Eye", icon: "👁️", level: 10, effect: "+10% accuracy", drainMs: 20000 },
+];
+
+export const BLESSING_BY_ID: Record<BlessingId, BlessingDef> = Object.fromEntries(
+  BLESSINGS.map((b) => [b.id, b])
+) as Record<BlessingId, BlessingDef>;
+
+/** Mending Light: one HP back every this many ms. */
+export const MENDING_MS = 6000;

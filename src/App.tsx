@@ -14,7 +14,7 @@ import { ItemIcon } from "./components/ItemIcon";
 import { ResizeHandle, useStoredSize } from "./components/ResizeHandle";
 import { clearSave, savedName, useGame } from "./game/useGame";
 import { sfx } from "./game/audio";
-import { fmt, totalLevel } from "./game/xp";
+import { fmt, levelForXp, totalLevel } from "./game/xp";
 
 // Drag limits for the docked panels — the map always keeps at least ~45% of the screen.
 const panelMax = () => Math.min(560, window.innerWidth * 0.45);
@@ -132,6 +132,14 @@ function GameScreen({ name, cont, onExit }: { name: string; cont: boolean; onExi
         </span>
         <span className="flex items-center gap-1 rounded-sm border border-[#3a2418] bg-[#160e08] px-2 py-0.5 text-[11.5px] font-bold text-[#ff8a72]">
           ♥ {g.hp}/{g.maxHp}
+        </span>
+        <span
+          title={g.blessings.length ? "Prayer points (blessings on)" : "Prayer points"}
+          className={`flex items-center gap-1 rounded-sm border px-2 py-0.5 text-[11.5px] font-bold text-[#dcdcf6] ${
+            g.blessings.length ? "border-[#8a88b0] bg-[#1c1a28] shadow-[0_0_8px_rgba(220,220,255,0.25)]" : "border-[#2c2a3a] bg-[#100f16]"
+          }`}
+        >
+          ✦ {Math.ceil(g.prayer)}/{levelForXp(g.xp.prayer)}
         </span>
         <span className="flex items-center gap-1 rounded-sm border border-[#3a2f14] bg-[#14100a] px-2 py-0.5 text-[11.5px] font-bold text-[#f0c858]">
           <ItemIcon item="coins" size={13} /> {fmt(g.coins)}

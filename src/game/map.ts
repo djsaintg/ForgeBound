@@ -25,9 +25,10 @@ const OFFSET_Y = PADDING;
 //               f shrimp spot  t trout spot
 //               M Roka (shop)  P Old Maro (guide npc)
 //               H goblin hut  V goblin totem banner  c chicken roost  h hay bale
+//               L altar
 
 const WALK_GROUND = new Set([".", ",", "#", "_", "b"]);
-const BLOCK_OBJ = new Set(["T", "O", "R", "S", "I", "C", "G", "F", "A", "B", "*", "M", "P", "=", "H", "V", "c", "h"]);
+const BLOCK_OBJ = new Set(["T", "O", "R", "S", "I", "C", "G", "F", "A", "B", "*", "M", "P", "=", "H", "V", "c", "h", "L"]);
 
 function mulberry(seed: number) {
   return function () {
@@ -218,6 +219,7 @@ objs[14 + OFFSET_Y][27 + OFFSET_X] = "B";
 objs[19 + OFFSET_Y][29 + OFFSET_X] = "*";
 objs[18 + OFFSET_Y][25 + OFFSET_X] = "M";
 objs[18 + OFFSET_Y][20 + OFFSET_X] = "P";
+objs[14 + OFFSET_Y][29 + OFFSET_X] = "L";
 
 // --- fishing spots (shifted) --------------------------------------------------------
 objs[riverY(15) + OFFSET_Y][15 + OFFSET_X] = "f";
