@@ -58,7 +58,7 @@ export const ItemIcon: React.FC<Props> = ({ item, size = "md", count }) => {
   // A faceted rock chunk studded with mineral crystals — shared by every ore,
   // tinted with the same colours the world's ore veins use.
   const oreSvg = (fleck: string, rock = "#5a5048", rockLight = "#7a6e62", rockDark = "#3e3630") => (
-    <svg viewBox="0 0 24 24" className="h-full w-full">
+    <svg viewBox="3 3.5 18 18" className="h-full w-full">
       <path d="M4 15 L6 8 L11 5 L17 6 L20 11 L19 17 L13 20 L7 19 Z" fill={rock} stroke="#1c1814" strokeWidth="1" strokeLinejoin="round" />
       <path d="M6 8 L11 5 L12 11 L4 15 Z" fill={rockLight} opacity="0.75" />
       <path d="M12 11 L20 11 L19 17 L13 20 Z" fill={rockDark} opacity="0.8" />
@@ -74,6 +74,20 @@ export const ItemIcon: React.FC<Props> = ({ item, size = "md", count }) => {
     </svg>
   );
 
+  // A cast ingot seen from slightly above: lit top face, tapered front face,
+  // a smelter's stamp and a metallic glint. Shared by every bar, tinted per metal.
+  const barSvg = (top: string, front: string, dark: string, glint = "#ffffff") => (
+    <svg viewBox="2 3.3 20 20" className="h-full w-full">
+      <ellipse cx="12" cy="18.6" rx="9" ry="1.6" fill="#000000" opacity="0.35" />
+      <path d="M4.5 10.5 L19.5 10.5 L21 17 L3 17 Z" fill={front} stroke="#1c1814" strokeWidth="1" strokeLinejoin="round" />
+      <path d="M3 17 L21 17 L20.6 15.4 L3.4 15.4 Z" fill={dark} opacity="0.85" />
+      <path d="M7 6.5 L17 6.5 L19.5 10.5 L4.5 10.5 Z" fill={top} stroke="#1c1814" strokeWidth="1" strokeLinejoin="round" />
+      <path d="M9.6 7.9 L14.4 7.9 L15.2 9.3 L8.8 9.3 Z" fill={front} opacity="0.55" />
+      <path d="M7.6 7.3 L11 7.3" stroke={glint} strokeWidth="0.9" strokeLinecap="round" opacity="0.85" />
+      <path d="M5.6 12 L6.2 15" stroke={glint} strokeWidth="0.8" strokeLinecap="round" opacity="0.45" />
+    </svg>
+  );
+
   // Hand-drawn 24×24 SVG icons for the v0.2.1 livestock set — no external assets.
   const getSvg = (id: ItemId): React.ReactNode | null => {
     switch (id) {
@@ -83,6 +97,9 @@ export const ItemIcon: React.FC<Props> = ({ item, size = "md", count }) => {
       case "gold_ore": return oreSvg(ORE_COLORS.G);
       // Coal is the rock itself: a black lump with a cool glassy sheen
       case "coal": return oreSvg("#5a6070", ORE_COLORS.C, "#3a3c48", "#16171d");
+      case "bronze_bar": return barSvg("#d8955a", "#a8643a", "#6e3c1e", "#ffe2bc");
+      case "iron_bar": return barSvg("#b4b8bc", "#83888e", "#53575c", "#f4f6f8");
+      case "steel_bar": return barSvg("#c4d0dc", "#8a9cb2", "#55647a", "#eef6ff");
       case "bones":
         return (
           <svg viewBox="0 0 24 24" className="h-full w-full">
