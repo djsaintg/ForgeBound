@@ -22,6 +22,41 @@ these up only if shimmer or flashes show up again.
 
 ---
 
+## Backlog — tooling (unscheduled)
+
+### ⬆️ One-click updates
+Getting a new version today means pulling and rebuilding by hand. Add an
+update path that does it in one step.
+
+- **Launcher only:** the game is a page in the browser, and a page can't run
+  `git` or write files; it also makes zero network requests by design. So
+  updating is the launcher's job, done before the game opens. No in-game
+  update button: with auto-update on launch it isn't needed.
+- **`./launch.sh --update`:** `git fetch --tags`, compare the newest release
+  tag with `package.json`'s version, and if there's a newer one:
+  `git pull --ff-only`, `npm ci` only if `package-lock.json` changed, then
+  rebuild `dist/index.html`. Print what changed (that version's changelog
+  section) and relaunch.
+- **Auto-update on launch:** a plain `./launch.sh` first checks whether the
+  repo's remote is reachable, by asking it directly (`git ls-remote` under a
+  short timeout, ~5s) rather than pinging some other host, so it's a real
+  "can we update?" test. Reachable → run the `--update` step automatically,
+  then launch. Unreachable, timed out, or not a git checkout (e.g. a copied
+  folder) → print one line ("Offline — skipping update check") and launch
+  the current build as normal. A failed or refused update never blocks
+  play: warn and launch what's already built.
+- **Opting out:** `./launch.sh --offline` (or `FORGEBOUND_NO_UPDATE=1`)
+  skips the check entirely, for slow or metered connections.
+- **Safety:** skip the update for a checkout with local changes (show `git
+  status`, then launch as normal), fast-forward only, never touch saves
+  (they live in the browser's localStorage, not the repo), and keep the
+  previous `dist/index.html` as a backup in case the new build fails.
+- **Also:** the launcher's `REQUIRED_FILES` list predates v0.4.x; refresh it
+  (or derive it from `src/`) so the preflight check covers the newer
+  modules (quests, music, soundscape, …).
+
+---
+
 ## v0.5.0 — The Wider Realm (planned)
 
 Grow the world roughly **5× in playable area** and open new zones inside a
