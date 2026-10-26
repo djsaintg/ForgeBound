@@ -5,7 +5,8 @@ import { ITEMS, RECIPES, SELL_RATIO, SHOP_STOCK, STATION_NAMES } from "../game/d
 import { SKILL_BY_ID, fmt, levelForXp } from "../game/xp";
 import { ItemIcon } from "./ItemIcon";
 import { sfx } from "../game/audio";
-import { Monitor, RotateCcw, Save, Sparkles, Volume2, VolumeX, ZoomIn } from "lucide-react";
+import { enterFullscreen, exitFullscreen, fullscreenSupported, setFullscreenPref, useFullscreen } from "../game/fullscreen";
+import { Maximize2, Minimize2, Monitor, RotateCcw, Save, Sparkles, Volume2, VolumeX, ZoomIn } from "lucide-react";
 
 function Backdrop({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
     return (
@@ -239,12 +240,20 @@ export function ShopModal({ api, g }: { api: GameApi; g: GameState }) {
 // ---------------------------------------------------------------- settings --
 export function SettingsModal({ api, g }: { api: GameApi; g: GameState }) {
     const [muted, setMuted] = useState(sfx.isMuted());
+    const fullscreen = useFullscreen();
     if (!g.settingsOpen) return null;
 
     const toggleMute = () => {
         const nm = !muted;
         sfx.setMuted(nm);
         setMuted(nm);
+    };
+
+    // Also remembered for next launch, so the login checkbox stays in step.
+    const toggleFullscreen = () => {
+        if (fullscreen) exitFullscreen();
+        else enterFullscreen();
+        setFullscreenPref(!fullscreen);
     };
 
     return (
@@ -288,6 +297,12 @@ export function SettingsModal({ api, g }: { api: GameApi; g: GameState }) {
             </div>
 
             <div className="flex flex-col gap-2 border-t border-[#3a2f1e] pt-3.5">
+                {fullscreenSupported() && (
+                    <button onClick={toggleFullscreen} className="btn-ghost flex w-full items-center justify-center gap-2 !py-2.5 text-[11px]">
+                        {fullscreen ? <Minimize2 className="h-3.5 w-3.5 text-[#7ee06a]" /> : <Maximize2 className="h-3.5 w-3.5 text-[#9fd8ef]" />}
+                        Fullscreen: {fullscreen ? "On" : "Off"}
+                    </button>
+                )}
                 <button onClick={toggleMute} className="btn-ghost flex w-full items-center justify-center gap-2 !py-2.5 text-[11px]">
                     {muted ? <VolumeX className="h-3.5 w-3.5 text-[#ff8a72]" /> : <Volume2 className="h-3.5 w-3.5 text-[#7ee06a]" />}
                     WebAudio: {muted ? "Muted" : "Active"}

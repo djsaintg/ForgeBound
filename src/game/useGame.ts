@@ -162,9 +162,9 @@ export function clearSave() {
   }
 }
 
-/** True when a restorable save already lives in this browser. */
-export function hasSave(): boolean {
-  return !!loadGame();
+/** The hero name locked into the current save, or null when there is none. */
+export function savedName(): string | null {
+  return loadGame()?.name ?? null;
 }
 
 export function useGame() {

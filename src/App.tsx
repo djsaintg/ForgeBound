@@ -8,19 +8,23 @@ import { SidePanels } from "./components/SidePanels";
 import { BankModal, ShopModal, StationModal, SettingsModal } from "./components/Modals";
 import { LevelUpOverlay } from "./components/LevelUpOverlay";
 import { ItemIcon } from "./components/ItemIcon";
-import { hasSave, useGame } from "./game/useGame";
+import { clearSave, savedName, useGame } from "./game/useGame";
 import { sfx } from "./game/audio";
 import { fmt, totalLevel } from "./game/xp";
 
 export default function App() {
   const [screen, setScreen] = useState<"login" | "game">("login");
   const [boot, setBoot] = useState<{ name: string; cont: boolean }>({ name: "Adventurer", cont: false });
-  const [savedExists, setSavedExists] = useState(hasSave());
+  const [saved, setSaved] = useState(savedName());
 
   if (screen === "login") {
     return (
       <LoginScreen
-        hasSave={savedExists}
+        savedName={saved}
+        onAbandon={() => {
+          clearSave();
+          setSaved(null);
+        }}
         onStart={(name, cont) => {
           setBoot({ name, cont });
           setScreen("game");
@@ -33,7 +37,7 @@ export default function App() {
       name={boot.name}
       cont={boot.cont}
       onExit={() => {
-        setSavedExists(hasSave());
+        setSaved(savedName());
         setScreen("login");
       }}
     />

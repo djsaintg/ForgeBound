@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { sfx } from "../game/audio";
+import { enterFullscreen, fullscreenPref, fullscreenSupported, setFullscreenPref } from "../game/fullscreen";
 import { VERSION } from "../version";
+import { PLANNED, RELEASES, type Release } from "../notes";
 
 interface Ember { x: number; y: number; vx: number; vy: number; s: number; ph: number; hue: number; }
 interface Star { x: number; y: number; r: number; ph: number; sp: number; }
@@ -79,13 +81,137 @@ function Emblem({ size = 92 }: { size?: number }) {
   );
 }
 
-export function LoginScreen({ hasSave, onStart }: { hasSave: boolean; onStart: (name: string, cont: boolean) => void }) {
+/** Renders `code` and **bold** spans from changelog/roadmap markdown. */
+function Inline({ text }: { text: string }) {
+  return (
+    <>
+      {text.split(/(`[^`]+`|\*\*[^*]+\*\*)/).map((part, i) =>
+        part.startsWith("`") ? (
+          <code key={i} className="rounded bg-black/50 px-1 text-[#d8b25c]">{part.slice(1, -1)}</code>
+        ) : part.startsWith("**") ? (
+          <strong key={i} className="text-[#c8b070]">{part.slice(2, -2)}</strong>
+        ) : (
+          part
+        ),
+      )}
+    </>
+  );
+}
+
+const bulletList = "ml-3.5 list-disc marker:text-[#5a4c32]";
+
+function NotesColumn({ label, featured, className = "", children }: { label: string; featured?: boolean; className?: string; children: React.ReactNode }) {
+  return (
+    <section
+      className={`flex flex-col rounded-sm border backdrop-blur-[3px] ${
+        featured
+          ? "border-[#8a6a2e] bg-[#14100a]/85 shadow-[0_0_28px_rgba(216,178,92,0.14)] lg:h-[248px]"
+          : "border-[#2a2415] bg-[#0f0c08]/70 lg:mt-4 lg:h-[232px]"
+      } ${className}`}
+    >
+      <p className={`font-display border-b px-3 py-1.5 text-center text-[9.5px] font-bold tracking-[0.34em] ${featured ? "border-[#3a2f1e] text-[#e8c876]" : "border-[#2a2415] text-[#8a7a52]"}`}>
+        {label}
+      </p>
+      <div className="max-h-[260px] flex-1 overflow-y-auto px-3 py-2.5 text-[11.5px] leading-relaxed text-[#a89c80] lg:max-h-none">{children}</div>
+    </section>
+  );
+}
+
+function ReleaseNotes({ r }: { r: Release }) {
+  return (
+    <>
+      <p className="font-bold text-[#c8b070]">
+        v{r.version}{r.title && ` — ${r.title}`}
+        <span className="ml-1.5 text-[10px] font-normal text-[#6a5a3a]">{r.date}</span>
+      </p>
+      {r.intro && <p className="mb-1.5 italic"><Inline text={r.intro} /></p>}
+      {r.sections.map((s) => (
+        <div key={s.heading} className="mt-1">
+          <p className="text-[9.5px] font-bold uppercase tracking-[0.2em] text-[#8a7a52]">{s.heading}</p>
+          <ul className={bulletList}>
+            {s.bullets.map((b, j) => <li key={j}><Inline text={b} /></li>)}
+          </ul>
+        </div>
+      ))}
+    </>
+  );
+}
+
+/** Previous release · current release · next planned version, always on show. */
+function BuildersNotes() {
+  const [current, previous] = RELEASES;
+  const next = PLANNED[0];
+  return (
+    <div className="w-full max-w-[1040px]" style={{ animation: "fadeIn 0.4s ease-out" }}>
+      <p className="font-display mb-2.5 text-center text-[10px] font-bold tracking-[0.5em] text-[#8a7a52]">BUILDER'S NOTES</p>
+      <div className="grid gap-3 lg:grid-cols-3 lg:items-start">
+        {previous ? (
+          <NotesColumn label="PREVIOUSLY" className="order-2 lg:order-1"><ReleaseNotes r={previous} /></NotesColumn>
+        ) : <div className="hidden lg:order-1 lg:block" />}
+        {current && (
+          <NotesColumn label="LIVE IN GAMMA" featured className="order-1 lg:order-2"><ReleaseNotes r={current} /></NotesColumn>
+        )}
+        {next ? (
+          <NotesColumn label="ON THE ANVIL" className="order-3">
+            <p className="font-bold text-[#c8b070]">Being forged for v{next.version}{next.title && ` — ${next.title}`}</p>
+            <ul className={`${bulletList} mt-1`}>
+              {next.teasers.map((t, j) => <li key={j}><Inline text={t} /></li>)}
+            </ul>
+            <p className="mt-2 text-[10.5px] italic text-[#6a5a3a]">Plans, not promises — the forge runs hot and cold.</p>
+          </NotesColumn>
+        ) : <div className="order-3 hidden lg:block" />}
+      </div>
+      <p className="mt-2.5 text-center text-[10.5px] text-[#6a5a3a]">
+        Take it offline: <code className="rounded bg-black/50 px-1 text-[#d8b25c]">npm run build</code> compiles the whole game to one{" "}
+        <code className="rounded bg-black/50 px-1 text-[#d8b25c]">dist/index.html</code> — copy it anywhere and open it. Inspired by classic
+        browser MMOs; all names, art and sounds here are original.
+      </p>
+    </div>
+  );
+}
+
+export function LoginScreen({
+  savedName,
+  onStart,
+  onAbandon,
+}: {
+  savedName: string | null;
+  onStart: (name: string, cont: boolean) => void;
+  onAbandon: () => void;
+}) {
   const [name, setName] = useState("Adventurer");
-  const [notesOpen, setNotesOpen] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [fullscreen, setFullscreen] = useState(fullscreenPref());
+  const hasSave = savedName !== null;
+
+  // The confirm state quietly lapses if the player doesn't follow through.
+  useEffect(() => {
+    if (!confirming) return;
+    const t = setTimeout(() => setConfirming(false), 5000);
+    return () => clearTimeout(t);
+  }, [confirming]);
 
   const enter = (cont: boolean) => {
     sfx.click();
+    if (fullscreen) enterFullscreen();
     onStart(name, cont);
+  };
+
+  const toggleFullscreen = () => {
+    sfx.click();
+    setFullscreen(!fullscreen);
+    setFullscreenPref(!fullscreen);
+  };
+
+  const abandon = () => {
+    sfx.click();
+    if (!confirming) {
+      setConfirming(true);
+      return;
+    }
+    setConfirming(false);
+    setName("Adventurer");
+    onAbandon();
   };
 
   return (
@@ -116,130 +242,139 @@ export function LoginScreen({ hasSave, onStart }: { hasSave: boolean; onStart: (
       {/* torch glow at horizon */}
       <div className="absolute bottom-[24%] left-[24%] h-24 w-24 rounded-full" style={{ background: "radial-gradient(circle, rgba(255,160,60,0.28), transparent 70%)" }} />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center gap-10 px-5 py-12 lg:flex-row lg:gap-20">
-        {/* brand */}
-        <div className="flex max-w-xl flex-col items-center text-center lg:items-start lg:text-left">
-          <div className="mb-5 flex items-center gap-4">
-            <Emblem />
-            <div className="hidden text-left sm:block">
-              <p className="font-display text-[10px] font-bold tracking-[0.5em] text-[#8a7a52]">AN OFFLINE REALM</p>
-              <p className="text-[11px] italic text-[#6a7a5a]">bound to no server, save, or signal</p>
+      <div className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col items-center justify-center gap-8 px-5 py-10">
+        <div className="flex w-full flex-col items-center justify-center gap-10 lg:flex-row lg:gap-20">
+          {/* brand */}
+          <div className="flex max-w-xl flex-col items-center text-center lg:items-start lg:text-left">
+            <div className="mb-5 flex items-center gap-4">
+              <Emblem />
+              <div className="hidden text-left sm:block">
+                <p className="font-display text-[10px] font-bold tracking-[0.5em] text-[#8a7a52]">AN OFFLINE REALM</p>
+                <p className="text-[11px] italic text-[#6a7a5a]">bound to no server, save, or signal</p>
+              </div>
+            </div>
+            <div className="relative inline-block">
+              <h1
+                className="font-display font-black leading-none tracking-[0.03em]"
+                style={{
+                  fontSize: "clamp(44px, 8vw, 78px)",
+                  background: "linear-gradient(180deg, #f8e7b0 0%, #e0bc66 42%, #8a6420 52%, #eecf82 78%, #b8903c 100%)",
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  color: "transparent",
+                  filter: "drop-shadow(0 3px 10px rgba(0,0,0,0.8)) drop-shadow(0 0 26px rgba(216,178,92,0.28))",
+                }}
+              >
+                FORGEBOUND
+              </h1>
+              <h1
+                aria-hidden
+                className="font-display pointer-events-none absolute inset-0 font-black leading-none tracking-[0.03em]"
+                style={{
+                  fontSize: "clamp(44px, 8vw, 78px)",
+                  background: "linear-gradient(115deg, transparent 42%, rgba(255,255,255,0.85) 50%, transparent 58%)",
+                  backgroundSize: "260% 100%",
+                  WebkitBackgroundClip: "text",
+                  backgroundClip: "text",
+                  color: "transparent",
+                  animation: "shineSweep 4.5s ease-in-out infinite",
+                }}
+              >
+                FORGEBOUND
+              </h1>
+            </div>
+            <p className="mt-4 max-w-md text-[15px] leading-relaxed text-[#b8b098]">
+              A single-player, <span className="font-bold text-[#d8b25c]">fully offline</span> action RPG in the spirit of the
+              great browser MMOs. Chop, mine, fish, smelt, smith — no account, no servers, no signal.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-2 lg:justify-start">
+              {["100% offline", "Single-file build", "Autosaves to device", "Original art & names"].map((f) => (
+                <span key={f} className="rounded-full border border-[#4a3c20] bg-[#12100a]/80 px-3 py-1 text-[11px] font-bold tracking-wide text-[#c8b070]">
+                  {f}
+                </span>
+              ))}
             </div>
           </div>
-          <div className="relative inline-block">
-            <h1
-              className="font-display font-black leading-none tracking-[0.03em]"
-              style={{
-                fontSize: "clamp(44px, 8vw, 78px)",
-                background: "linear-gradient(180deg, #f8e7b0 0%, #e0bc66 42%, #8a6420 52%, #eecf82 78%, #b8903c 100%)",
-                WebkitBackgroundClip: "text",
-                backgroundClip: "text",
-                color: "transparent",
-                filter: "drop-shadow(0 3px 10px rgba(0,0,0,0.8)) drop-shadow(0 0 26px rgba(216,178,92,0.28))",
-              }}
-            >
-              FORGEBOUND
-            </h1>
-            <h1
-              aria-hidden
-              className="font-display pointer-events-none absolute inset-0 font-black leading-none tracking-[0.03em]"
-              style={{
-                fontSize: "clamp(44px, 8vw, 78px)",
-                background: "linear-gradient(115deg, transparent 42%, rgba(255,255,255,0.85) 50%, transparent 58%)",
-                backgroundSize: "260% 100%",
-                WebkitBackgroundClip: "text",
-                backgroundClip: "text",
-                color: "transparent",
-                animation: "shineSweep 4.5s ease-in-out infinite",
-              }}
-            >
-              FORGEBOUND
-            </h1>
-          </div>
-          <p className="mt-4 max-w-md text-[15px] leading-relaxed text-[#b8b098]">
-            A single-player, <span className="font-bold text-[#d8b25c]">fully offline</span> action RPG in the spirit of the
-            great browser MMOs. Chop, mine, fish, smelt, smith — no account, no servers, no signal.
-          </p>
-          <div className="mt-6 flex flex-wrap justify-center gap-2 lg:justify-start">
-            {["100% offline", "Single-file build", "Autosaves to device", "Original art & names"].map((f) => (
-              <span key={f} className="rounded-full border border-[#4a3c20] bg-[#12100a]/80 px-3 py-1 text-[11px] font-bold tracking-wide text-[#c8b070]">
-                {f}
-              </span>
-            ))}
-          </div>
-        </div>
 
-        {/* login card */}
-        <div className="rs-panel w-full max-w-sm">
-          <div className="border-b border-[#3a2f1e] px-5 py-3">
-            <h2 className="font-display text-center text-[12px] font-bold tracking-[0.34em] text-[#e8c876]">ENTER THE REALM</h2>
-          </div>
-          <div className="flex flex-col gap-3.5 px-5 py-5">
-            <label className="block">
-              <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.22em] text-[#8a7a52]">Display name</span>
-              <input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && enter(hasSave)}
-                maxLength={14}
-                spellCheck={false}
-                className="w-full rounded-sm border border-[#4a3a20] bg-[#0d0a07] px-3 py-2.5 text-[15px] text-[#f0e6cc] outline-none transition-all focus:border-[#d8b25c] focus:shadow-[0_0_0_1px_rgba(216,178,92,0.3),0_0_18px_rgba(216,178,92,0.15)]"
-              />
-            </label>
-            <div className="flex items-center gap-2.5 rounded-sm border border-[#2a2415] bg-[#0f0c08] px-3 py-2">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#7ee06a] opacity-40" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#7ee06a]" />
-              </span>
-              <div className="flex-1">
-                <p className="text-[12.5px] font-bold text-[#d8d0bc]">World 1 — Offline</p>
-                <p className="text-[10.5px] text-[#6a5a3a]">Local save · zero network requests</p>
-              </div>
-              <span className="font-display text-[9px] font-bold tracking-widest text-[#8a7a52]">FREE</span>
+          {/* login card */}
+          <div className="rs-panel w-full max-w-sm">
+            <div className="border-b border-[#3a2f1e] px-5 py-3">
+              <h2 className="font-display text-center text-[12px] font-bold tracking-[0.34em] text-[#e8c876]">ENTER THE REALM</h2>
             </div>
-            {hasSave && (
-              <button onClick={() => enter(true)} className="btn-gold">
-                ⚑ &nbsp;Continue your adventure
-              </button>
-            )}
-            <button onClick={() => enter(false)} className={hasSave ? "btn-ghost" : "btn-gold"}>
-              {hasSave ? "Begin a new adventure" : "Begin your adventure"}
-            </button>
-            {hasSave && (
-              <p className="text-center text-[10.5px] text-[#6a5a3a]">A previous save exists on this device. Starting anew will replace it.</p>
-            )}
-            <button
-              onClick={() => setNotesOpen((o) => !o)}
-              className="mt-1 flex items-center justify-center gap-2 text-[11px] font-bold uppercase tracking-[0.2em] text-[#8a7a52] transition-colors hover:text-[#d8b25c]"
-            >
-              <span className={`transition-transform ${notesOpen ? "rotate-90" : ""}`}>▸</span> Builder's notes
-            </button>
-            {notesOpen && (
-              <div className="rounded-sm border border-[#2a2415] bg-[#0f0c08] p-3 text-[11.5px] leading-relaxed text-[#a89c80]" style={{ animation: "fadeIn 0.2s ease-out" }}>
-                <p className="mb-1 font-bold text-[#c8b070]">Live in Gamma v{VERSION} — Gathering Fixes</p>
-                <p className="mb-2">Click a tree, rock or fishing spot from anywhere and get straight to work · every ore has its own icon.</p>
-                <p className="mb-1 font-bold text-[#c8b070]">v0.3.1 — Visual Repairs</p>
-                <p className="mb-2">Flicker-free rendering while walking and working · clicks land on the tile under the cursor · trees and rocks stop the swing the moment they fall.</p>
-                <p className="mb-1 font-bold text-[#c8b070]">Built on the Visual &amp; Animation Overhaul</p>
-                <p>
-                  64-bit remastered renderer with a live 8-bit⇄64-bit toggle · explorer camera zoom on the mouse wheel ·
-                  a mountain-ringed realm holding Grublin Gully's goblins &amp; brigands · cows, hens, laid eggs,
-                  feather-lure trout and steak · melee combat with hitsplats, loot drops and bone-burying Prayer ·
-                  10 live skills · bank, shop
-                  &amp; gear tiers · autosave to localStorage.
-                </p>
-                <p className="mb-1 mt-2 font-bold text-[#c8b070]">Roadmap</p>
-                <p>Quests · more skills · an original soundtrack · pushing the mountains back for a bigger map.</p>
-                <p className="mb-1 mt-2 font-bold text-[#c8b070]">Taking it offline</p>
-                <p>Run <code className="rounded bg-black/50 px-1 text-[#d8b25c]">npm run build</code> — the whole game compiles to one <code className="rounded bg-black/50 px-1 text-[#d8b25c]">dist/index.html</code>. Copy that file anywhere (laptop, phone, USB stick) and open it. No server, no internet, ever.</p>
-                <p className="mt-2 text-[#6a5a3a]">Inspired by classic browser MMOs. All names, art and sounds here are original.</p>
+            <div className="flex flex-col gap-3.5 px-5 py-5">
+              {hasSave ? (
+                <div>
+                  <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.22em] text-[#8a7a52]">Your hero</span>
+                  <p className="font-display rounded-sm border border-[#2a2415] bg-[#0d0a07] px-3 py-2.5 text-[15px] font-bold tracking-wide text-[#e8c876]">{savedName}</p>
+                </div>
+              ) : (
+                <label className="block">
+                  <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.22em] text-[#8a7a52]">Display name</span>
+                  <input
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && enter(false)}
+                    maxLength={14}
+                    spellCheck={false}
+                    className="w-full rounded-sm border border-[#4a3a20] bg-[#0d0a07] px-3 py-2.5 text-[15px] text-[#f0e6cc] outline-none transition-all focus:border-[#d8b25c] focus:shadow-[0_0_0_1px_rgba(216,178,92,0.3),0_0_18px_rgba(216,178,92,0.15)]"
+                  />
+                  <span className="mt-1 block text-[10px] text-[#6a5a3a]">Chosen once — your name is set when the adventure begins.</span>
+                </label>
+              )}
+              <div className="flex items-center gap-2.5 rounded-sm border border-[#2a2415] bg-[#0f0c08] px-3 py-2">
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#7ee06a] opacity-40" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-[#7ee06a]" />
+                </span>
+                <div className="flex-1">
+                  <p className="text-[12.5px] font-bold text-[#d8d0bc]">World 1 — Offline</p>
+                  <p className="text-[10.5px] text-[#6a5a3a]">Local save · zero network requests</p>
+                </div>
+                <span className="font-display text-[9px] font-bold tracking-widest text-[#8a7a52]">FREE</span>
               </div>
-            )}
-          </div>
-          <div className="border-t border-[#2a2415] px-5 py-2.5 text-center text-[10px] tracking-wide text-[#5a4c32]">
-            v{VERSION} · single-player · progress lives in this browser
+              {hasSave ? (
+                <>
+                  <button onClick={() => enter(true)} className="btn-gold">
+                    ⚑ &nbsp;Continue your adventure
+                  </button>
+                  <button
+                    onClick={abandon}
+                    className="btn-gold w-[60%] self-center !px-3 !py-[7px] !text-[10.5px]"
+                    style={confirming ? { filter: "hue-rotate(-30deg) saturate(1.3)" } : undefined}
+                  >
+                    {confirming ? "Click again to confirm" : "Abandon & Restart"}
+                  </button>
+                  <p className="text-center text-[10.5px] text-[#6a5a3a]">
+                    {confirming
+                      ? `This permanently deletes ${savedName} and all progress on this device.`
+                      : "Abandoning deletes this save so a new hero can be named."}
+                  </p>
+                </>
+              ) : (
+                <button onClick={() => enter(false)} className="btn-gold">
+                  Begin your adventure
+                </button>
+              )}
+              {fullscreenSupported() && (
+                <button
+                  onClick={toggleFullscreen}
+                  role="switch"
+                  aria-checked={fullscreen}
+                  className="flex items-center justify-center gap-2 text-[10.5px] font-bold uppercase tracking-[0.18em] text-[#8a7a52] transition-colors hover:text-[#d8b25c]"
+                >
+                  <span className={`flex h-3.5 w-3.5 items-center justify-center rounded-[2px] border text-[9px] ${fullscreen ? "border-[#d8b25c] bg-[#d8b25c] text-[#241a08]" : "border-[#4a3a20]"}`}>
+                    {fullscreen && "✓"}
+                  </span>
+                  Play fullscreen
+                </button>
+              )}
+            </div>
+            <div className="border-t border-[#2a2415] px-5 py-2.5 text-center text-[10px] tracking-wide text-[#5a4c32]">
+              v{VERSION} · single-player · progress lives in this browser
+            </div>
           </div>
         </div>
+        <BuildersNotes />
       </div>
     </div>
   );
