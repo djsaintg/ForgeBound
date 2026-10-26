@@ -3,6 +3,11 @@
 Scratchpad for upcoming work. Items here are **not yet implemented** — they are
 notes for future versions. Once shipped, they move into `CHANGELOG.md`.
 
+**Public teasers:** the login screen's Builder's Notes reads only lines of the
+form `- **Teaser:** …` sitting under a `## vX.Y.Z — … (planned)` heading.
+Everything else in this file stays private. Keep teasers soft ("being
+forged", not promises).
+
 ---
 
 ## Backlog — render hardening (no known bugs)
@@ -21,75 +26,13 @@ these up only if shimmer or flashes show up again.
 
 ---
 
-## v0.3.3 — Login Page Edits & UI Polish (planned)
+## v0.3.4 — Resizable Windows & HUD (planned)
 
-### Display-name flow rework
-- Once a display name has been **chosen/confirmed**, the name-entry option
-  disappears from the login card (no longer editable at that point).
-- A **second button** appears beneath "Begin Your Adventure":
-  - Same visual styling as the "Begin Your Adventure" gold button.
-  - Sized at roughly **60% of that button** (~40% smaller).
-  - Functionality: **delete the current adventure and start over** (wipes the
-    local save so a fresh name can be entered / a new game begun).
-  - **Button label: TBD** — decide the wording when work begins.
-
-**Open questions to resolve at build time:**
-- What exactly "confirming" a name means (e.g. does it lock on first
-  Continue, or is there a separate confirm step?).
-- Final button copy (e.g. "Start Over", "New Adventure", "Abandon & Restart").
-- Confirmation prompt before the save is deleted? (Recommended, to prevent
-  accidental wipes.)
-
-### Changelog-driven "What's New" on the login screen
-- Tie the login screen's builder's notes to `CHANGELOG.md` so the most recent
-  release's updates are displayed automatically — no more hand-editing the
-  notes copy each version.
-- Goal: whatever was in the latest push shows up on the login page's
-  "What's New / Builder's Notes" panel on next build.
-
-**Options to weigh at build time:**
-- **Build-time import (recommended):** parse `CHANGELOG.md` at build via a Vite
-  plugin / `?raw` import, extract the top (most recent) version block, and feed
-  its bullets into the login panel. Keeps everything in one source of truth and
-  stays fully offline (baked into `dist/index.html`).
-- **Manual mirror:** keep a small `updates.ts` constant the login reads from —
-  simpler, but still a second place to edit each release (defeats the purpose).
-
-**Open questions:**
-- How many bullets / which sections to surface (Added only? Added + Changed?
-  a capped count?).
-- Show just the newest version, or a short scrollable history?
-- Parse the raw markdown vs. maintain a lightweight structured format the
-  changelog is generated from.
-- Keep the hand-written flavour intro line, or show raw bullets only?
-
-### Roadmap-driven "What's Next" on the login screen
-- Tie the login screen to `ROADMAP.md` as well, so upcoming plans are displayed
-  alongside the changelog. Companion to the item above — design and build them
-  together.
-
-**Build it as one feature, not two:**
-- A single "Builder's Notes" panel with two sections: **What's New** (latest
-  `CHANGELOG.md` release) and **What's Next** (planned work from this file).
-- One shared build-time parse pipeline (`?raw` import for both files) feeding
-  the same panel — avoid two parallel mechanisms.
-
-**Curation is the real problem here (unlike the changelog):**
-- This file contains private planning — "TBD" labels, open questions, internal
-  options. The login panel must NOT show raw roadmap markdown verbatim.
-- Recommended convention: give each planned item a short **public teaser line**
-  (e.g. under a `**Teaser:**` sub-bullet) and have the login read only those.
-  Full planning detail stays in this file.
-- Alternative: a `<!-- public -->` HTML comment marker the parser filters on.
-
-**Open questions:**
-- Teaser wording: confident promises ("coming in v0.3.3") vs. soft language
-  ("being considered")? Public plans create expectations.
-- Show the target version number on planned items, or just "coming soon"?
-- If nothing is planned yet, hide the section entirely (don't render an empty
-  "What's Next").
+Carried over from v0.3.3, which shipped the login rework, self-writing
+builder's notes and fullscreen play (see `CHANGELOG.md`).
 
 ### 📐 Resizable Interface Windows
+- **Teaser:** Drag-to-resize Backpack and Adventurer's Log windows
 - Restore the functionality allowing players to drag the corners of the
   **Backpack** and **Adventurer's Log** to resize them.
 - Note: no resize/drag code exists in the current tree — this is a rebuild,
@@ -99,6 +42,7 @@ these up only if shimmer or flashes show up again.
   allows the map to show through the background.
 
 ### 🧭 HUD Occlusion Fix
+- **Teaser:** XP orbs and action banner tucked neatly beneath the compass
 - Move the **Active Action Banner** ("Chopping tree...") and **XP Orbs** further
   down the screen.
 - **Target:** Anchor them at `top: 224px` so they appear cleanly underneath
@@ -110,5 +54,194 @@ these up only if shimmer or flashes show up again.
   compass.
 
 ### ⛰️ Mountain Expansion
+- **Teaser:** Mountain ranges ready to be pushed back as the realm grows
 - Refine the **Mountain Range** border visuals to support "pushing" them back
   as the core world grows in future updates.
+- Superseded in scope by the v0.5.0 world expansion (~5× map). Here, only do
+  visual work that survives that move; the engine groundwork lives in v0.5.0.
+
+---
+
+## v0.4.0 — Quests & Prayer (planned)
+
+The first real goals beyond grinding: things to *do* with what you gather,
+and something to spend Prayer on. Fits the current map — no new zone needed.
+
+### 📜 Basic Gathering Quests
+- **Teaser:** Your first quests — townsfolk in need of fish, logs and ore
+- A quest-giver NPC (or a notice board in Vale Square) hands out simple
+  fetch quests: "Bring me 10 logs", "5 raw trout", "8 copper + 8 tin ore".
+- Rewards: coins, a skill XP lamp, and occasionally a tool/gear upgrade.
+- A **Quests** tab in the side panel: available / in progress / complete,
+  with a progress counter (e.g. 6/10 logs) that updates from the backpack.
+- Save format: add a `quests` map to the save payload (bump `SAVE_VERSION`
+  with a migration so existing saves keep working).
+
+**Open questions:**
+- Fixed hand-written quest list, or repeatable randomised "daily" tasks too?
+- Do turned-in items get consumed (yes, probably) and must they be in the
+  backpack, or can the bank count?
+- Quest points as a separate tally / unlock gate for later content?
+
+### 🖱️ Right-Click Action Menus
+- **Teaser:** Right-click anything for a menu of actions — talk, trade, inspect and more
+- **Left-click stays as-is:** walk to a tile, or perform the target's
+  *default* action (Roka → open the trading post, tree → chop, rock → mine,
+  goblin → attack, ground item → pick up).
+- **Right-click opens a context menu** at the cursor listing every action for
+  whatever is under it, default first. Examples:
+  - **Roka:** Talk · Trade (open trading post) · Inspect
+  - **Tree / rock / fishing spot:** Chop / Mine / Fish · Inspect
+  - **Goblin / brigand / cow / hen:** Attack · Inspect (level, HP)
+  - **Ground item:** Take · Inspect
+  - **Empty tile:** Walk here
+- **Talk** gives NPCs a few lines of dialogue, and it's the hook the quest
+  system uses (quest-givers offer and turn in quests through Talk).
+- **Inspect** prints a flavour/stat line to the Adventurer's Log.
+- Menu closes on choosing an option, clicking elsewhere, Escape, or moving
+  the mouse well away from it. Styled to match the glass panels.
+- Build note: `WorldCanvas.tsx` currently swallows right-clicks
+  (`onContextMenu` → `preventDefault`). Refactor each target's click handling
+  into a list of `{ label, run, isDefault }` actions so left-click runs the
+  default and right-click renders the list — one source for both.
+- Consider the same pattern for backpack items later (left-click = use/eat/
+  equip, right-click = Use · Drop · Inspect · Sell).
+
+**Open questions:**
+- Long-press on touch/mobile to open the menu?
+- Should the menu list every target stacked on a tile (e.g. a cow standing on
+  dropped loot), or only the topmost?
+
+### ✨ Prayer, Properly
+- **Teaser:** Prayer grows teeth — an altar and blessings to call on in battle
+- Prayer is already a live skill, but only for burying bones; there is
+  nothing to spend it on yet. Add **Prayer points** (max = Prayer level) and
+  a small set of toggleable combat blessings that drain points over time:
+  e.g. +5% Defence (lvl 1), +5% Strength (lvl 4), faster HP regen (lvl 7),
+  +10% accuracy (lvl 10).
+- A small shrine/altar near spawn to recharge points (and later: offer bones
+  at it for bonus XP).
+- Ties straight into combat — goblins and brigands become the natural
+  training loop alongside burying their bones.
+
+---
+
+## v0.5.0 — The Wider Realm (planned)
+
+Grow the world roughly **5× in playable area** and open new zones inside a
+pushed-back mountain ring, built around levelling the next skills. The
+current valley becomes one region of many. First new zone, working name:
+*The Wildwood*.
+
+### 🗺️ World Expansion — ~5× the map
+- **Teaser:** Beyond the ridge — a far wider realm opens inside the mountains
+- **Size:** today's playable core is 56×36 tiles (2,016) inside an 8-tile
+  mountain band. Target ≈ 125×80 core (~10,000 tiles, ≈5×), so it is ~400%
+  *more* map. Final numbers decided at build time.
+
+**Engine groundwork (small — do first, no new content yet):**
+- **Renderer & pathfinding: already fine.** Drawing only covers tiles on
+  screen, and BFS over ~10k tiles is trivial. No real cost there.
+- **Minimap → radar.** `Minimap.tsx` draws the *entire* map at 3 px/tile
+  (216×156 px today). At 5× that's ~375×240 — too big. Turn it into a
+  player-centred radar window (fixed size, scrolls with the hero), keeping
+  click-to-travel; optionally add a full **World Map** overlay (key `M`).
+- **The 8-tile padding exists only so the full-map compass never covers
+  playable ground.** With a radar it can shrink to a slim mountain rim.
+- **Region-based authoring.** `map.ts` hand-places everything with
+  `+ OFFSET_X/Y` arithmetic in one file. Split into region modules
+  (`regions/valley.ts`, `regions/wildwood.ts`, …), each authored in local
+  coordinates (ideally as an ASCII layout block) and stamped onto the world
+  grid at an origin. Makes 5× the content manageable to write and tweak.
+- **Save migration.** Hero position, ground items and station lookups are
+  absolute tile coords. Keep the current valley at a fixed origin in the new
+  grid and migrate old saves by that offset (pattern already exists in
+  `loadGame`: the pre-expansion `g.x < 8` shift). Bump `SAVE_VERSION`.
+- Spawn lists (cows, hens, goblins) move into their regions too.
+
+**Content (the real work):**
+- 5× the land needs 5× the reasons to walk it, or it feels empty. Plan
+  regions before drawing:
+  - **The Vale** (current valley, kept as the starter hub).
+  - **The Wildwood** — dense forest, willow/maple trees, a lake with a new
+    fishing spot, Fletching & Ranged training ground (below).
+  - **A highland mining camp** — higher-tier ore (mithril), a second
+    furnace/anvil, tougher foes guarding it.
+  - **Ruins / a second settlement** — quest-givers, a bank, Roka-style
+    trader, Prayer altar (ties into v0.4.0).
+- Roads linking regions, with landmarks so travel reads as a journey.
+- Gate deeper regions by level or quest (e.g. v0.4.0 starter quests).
+- Tougher foes for mid-level combat, with better drops.
+- Consider releasing in steps: v0.5.0 = groundwork + Wildwood, later
+  point releases add the remaining regions.
+
+**Open questions:**
+- Exact target size, and grow outward evenly or mostly in one direction?
+- Fast travel (signposts / teleports) once the map is large, or walk only?
+- Does the hero's walk speed need a bump (or a run toggle) for longer trips?
+
+### 🏹 New Skills: Fletching & Ranged
+- **Teaser:** Fletching and Ranged — carve bows, fletch arrows, fight from afar
+- The best fit for the existing world: **logs** and **feathers** already
+  drop, so Fletching (logs → shafts → arrows, logs → bows) slots in with no
+  new raw materials. Ranged then gives a second combat style that uses them.
+- The new zone hosts the training ground: an archery range / target butts
+  and a fletcher's workshop NPC.
+- Both skills already exist as greyed-out entries in `xp.ts` (`impl: false`);
+  flip them on and add their recipes/actions.
+
+**Open questions:**
+- Zone name and theme.
+- How big a map expansion the renderer and pathfinding can comfortably take.
+- Ranged ammo: consumed per shot, or partially recoverable from the ground?
+
+---
+
+## v0.6.0 — A Proper Village (planned)
+
+The Vale's open square becomes a real village: actual buildings that house
+the people and services already there.
+
+### 🏘️ Vale Village Rebuild
+- **Teaser:** The Vale grows up — a proper village with real buildings
+- Give every service a home instead of standing in the open:
+  - **Forge / smithy** — furnace and anvil under one roof
+  - **Bank** — a stone counting-house
+  - **Roka's trading post** — a shopfront
+  - **Old Maro's cottage** — the guide's house
+  - **Inn / tavern** — campfire cooking moves to a hearth; a natural home
+    for quest-givers (ties into v0.4.0 quests and Talk menus)
+  - Homes for villagers, a well, market stalls, a chapel or shrine
+    (pairs with the v0.4.0 Prayer altar)
+- **How buildings work (decide at build time):**
+  - *Exterior-only* — walls block, a door tile is the way in, the roof fades
+    out when the hero walks inside (classic top-down approach; fits the
+    current single-map renderer best).
+  - *Separate interiors* — doors load a small interior map. More work:
+    needs map switching and save support.
+- Multi-tile sprites: walls, roofs, doors, windows, chimneys with smoke —
+  in both 64-bit and 8-bit modes.
+- Builds on the v0.5.0 region system: the Vale becomes its own region
+  module, so rebuilding it doesn't touch the rest of the world.
+- Save migration if station/NPC tiles move.
+
+**Open questions:**
+- Roofs that fade vs. separate interior maps?
+- Keep the existing layout recognisable, or redesign the square freely?
+- Villager NPCs who wander/idle, or static figures?
+
+---
+
+## Ideas — later skills (unscheduled, private)
+
+Candidates for after v0.5.0, roughly in order of how well they fit what
+already exists:
+
+- **Crafting** — cows could drop cowhide → leather armour; gold ore
+  (already mined) → rings and amulets at the furnace.
+- **Herblore** — herbs as rare goblin drops or a herb patch → potions that
+  pair with combat (strength / defence / prayer restore).
+- **Agility** — an obstacle course in the new zone; perks like faster run
+  energy or shortcuts across the map.
+- **Thieving / Slayer / Magic / Runecrafting / Farming / Construction** —
+  bigger systems; park until the core loop and zones are richer.
