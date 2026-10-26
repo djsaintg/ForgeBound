@@ -3,6 +3,54 @@
 All notable changes to **ForgeBound**. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project follows semver.
 
+## [0.4.4] — Gamma v0.4.4 · Sound & Score — 2026-10-26
+
+Give the realm a voice: an original score with a theme for each corner of
+the valley, a full sound-effects pass, ambience, and voices for the
+townsfolk. Every note and sound is synthesized live, so the game is still a
+single offline file with no audio assets.
+
+### Added
+
+- Four original music themes, played by a small sequencer through
+  synthesized instruments (plucked lute and harp, flute, horn, pad, bass,
+  frame drum, shaker and bells) in a shared synthetic reverb:
+  - Title of the Realm (login screen): a stirring B-minor call to adventure
+    at 110 BPM, horn doubled by flute over driving drums
+  - Hearth of the Vale (the square, meadow, pasture, coop and roads): a
+    warm 3/4 folk waltz in D major
+  - Under the Westwood (the Westwood and the river): flowing harp and a
+    slow flute in A Dorian
+  - Stone and Smoke (Grublin Gully and Keldrek Mine): a darker E-minor
+    march, horn over frame drums
+- Themes crossfade as you move between areas, once you've been in the new
+  one for a moment (so walking along a border doesn't flip-flop). The
+  melody rests every other time round, so the music breathes
+- Stingers for level-ups, quest completion and death; the music dips
+  under them, and they play on the effects volume
+- NPC voices: a few syllables of made-up speech on every line, low and
+  unhurried for Old Maro, brighter and quicker for Roka
+- Footsteps that change with the ground: a muffled thud and rustle on
+  grass, a gravelly crunch on the road, a firmer clack on the square's
+  stone, a hollow knock on the bridge and a soft shush on sand. Feet
+  alternate and every step varies a little
+- Ambience that fades with distance: running water by the river, the
+  forge's roar near the furnace and anvil, campfire crackle, a sizzle while
+  cooking, birdsong by day and crickets at night
+- New sounds for opening the bank (a chest creak and coins) and Roka's
+  shop (a bell), closing windows, picking up and dropping items, eating,
+  pouring an XP bottle, hens clucking and goblins grunting
+- Settings: separate Music and Effects volume sliders (ambience follows
+  Effects) and a "Now playing" line, remembered with the mute between
+  sessions
+
+### Changed
+
+- Every existing sound effect is redone: weightier axe thunks, ringing
+  pick and anvil strikes, splashes, coins, combat hits and Prayer chimes
+- Sound starts on the first click or key press, as browsers require; the
+  title theme plays on the login screen from then on
+
 ## [0.4.3] — Gamma v0.4.3 · Quests — 2026-10-26
 
 The first real goals beyond grinding: Old Maro's quests that teach the

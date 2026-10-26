@@ -22,54 +22,6 @@ these up only if shimmer or flashes show up again.
 
 ---
 
-## v0.4.4 — Sound & Score (planned)
-
-Give the realm a voice: a full sound-effects pass and background music with
-the warm, orchestral-fantasy feel of RuneScape 3, all of it original.
-
-### 🎵 Background Music
-- **Teaser:** A score for the realm is being composed — music for every corner of the map
-- **Feel, not copies:** aim for RS3's *mood* (gentle orchestral/folk
-  fantasy, looping area themes, a calm and adventurous "MMO afternoon"
-  vibe). **No Jagex melodies, samples, tracks or recognisable motifs**, no
-  names or titles borrowed from their soundtrack, and nothing "in the style
-  of" a specific track. Every tune is written for ForgeBound.
-- **Area themes:** a track per zone (the Vale, the woods, the mine and
-  quarry, the riverbank, the goblin gully), with a soft crossfade as the
-  hero walks between them. Fits naturally with the v0.5.0 world expansion.
-- **Moments:** short stingers for level-ups (replacing or extending today's
-  arpeggio), quest complete, death, and maybe a night-time variation.
-- **How it's made:** stay asset-free if possible: a small sequencer on the
-  existing WebAudio engine (`src/game/audio.ts`) playing hand-written note
-  data through layered synth "instruments" (pad, plucked string, flute,
-  soft drum). Fallback if it sounds too chiptune: self-composed or
-  CC0-licensed audio files, embedded so the single-file offline build
-  survives. Record each track's source and licence in the repo.
-- **Settings:** separate Music and Effects volume sliders (alongside the
-  existing mute), remembered like the other options. Music off by default
-  until the first click, since browsers block autoplay anyway.
-
-### 🔊 Sound Effects Pass
-- **Teaser:** Every swing, splash and sizzle gets its own sound
-- Today's effects are a handful of synth blips. Give every action a
-  distinct, crunchier sound: axe thunks, pick clinks, anvil rings, furnace
-  roar, fire sizzle, reel and splash, footsteps per ground type (grass,
-  path, wood, stone), UI clicks, bank and shop open/close, item drop/pick-up,
-  eating, bury, and a proper creature set (cow, chicken, goblin).
-- Land each sound on the matching animation's impact frame (builds on the
-  v0.4.0 per-job animations).
-- Ambient beds: birdsong by day, crickets at night, running water near the
-  river, the forge hum near the furnace and anvil. Volume falls off with
-  distance.
-- Same copyright rule as the music: original or CC0 only, no ripped game
-  audio.
-
-**Open questions:**
-- Pure synthesis vs embedded audio files (and what that does to build size)?
-- How many area themes for the first cut, before v0.5.0 adds new zones?
-
----
-
 ## v0.5.0 — The Wider Realm (planned)
 
 Grow the world roughly **5× in playable area** and open new zones inside a
@@ -82,6 +34,12 @@ current valley becomes one region of many. First new zone, working name:
 - **Size:** today's playable core is 56×36 tiles (2,016) inside an 8-tile
   mountain band. Target ≈ 125×80 core (~10,000 tiles, ≈5×), so it is ~400%
   *more* map. Final numbers decided at build time.
+
+- **Music for the new zones:** since v0.4.4 each area plays a theme
+  (`music.ts`: a chord per bar, a melody line and per-theme patterns, mapped
+  from `tileName` in `themeFor`). Each new zone gets its own original theme,
+  and the Wildwood can lean on the Westwood's harp and flute. Still open from
+  v0.4.4: a night-time variation (thinner, slower arrangement after dark).
 
 **Engine groundwork (small — do first, no new content yet):**
 - **Renderer & pathfinding: already fine.** Drawing only covers tiles on

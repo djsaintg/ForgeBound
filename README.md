@@ -3,7 +3,7 @@
 **A single-player action-RPG that lives in one HTML file.**
 Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
-`v0.4.3 — Gamma Quests` · `100% offline` · `MIT licensed`
+`v0.4.4 — Gamma Sound & Score` · `100% offline` · `MIT licensed`
 
 ---
 
@@ -11,7 +11,18 @@ Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
 [![Sponsor](https://raw.githubusercontent.com/djsaintg/djsaintg/main/sponsor.svg)](https://buymeacoffee.com/djsaintg)
 
-## What's new in v0.4.3
+## What's new in v0.4.4
+
+- **An original score** — a title theme and three area themes (the Vale,
+  the Westwood and river, the gully and mine) that crossfade as you travel,
+  all synthesized live
+- **Sounds for everything** — footsteps that change with the ground, a
+  voice for every townsperson, ringing anvils, bells, splashes and more
+- **Ambience** — the river, the forge, crackling fires, birdsong by day and
+  crickets at night, louder the closer you are
+- **Your mix** — separate Music and Effects volume in Settings
+
+## v0.4.3 — Quests
 
 - **Your first quests** — Old Maro teaches the valley's basics in three
   chains: combat (hens, cows, then the goblins), smithing (bronze up to
@@ -247,7 +258,7 @@ quests and deeper systems arrive.
 | Click a blessing in the Prayer tab          | Switch it on or off (drains prayer points)       |
 | Left-click the altar                        | Pray — refill your prayer points                 |
 | Drag a side-panel tab onto another pane     | Dock it above / below, or group it there         |
-| Gear button in the side panel               | Engine settings — zoom, render mode, audio       |
+| Gear button in the side panel               | Settings — zoom, render mode, music and effects volume |
 | `Esc`                                       | Close any panel, or put down a held item         |
 
 ## Under the hood
@@ -259,7 +270,9 @@ quests and deeper systems arrive.
   mode, switchable live from Settings
 - **Lighting pass** — additive fire haloes over a day/night wash, plus
   interpolated six-frame character animation
-- All sound is **synthesized with WebAudio** — zero audio assets
+- All sound is **synthesized with WebAudio** — zero audio assets: a small
+  sequencer plays the original score through hand-built instruments
+  (Karplus–Strong strings, flute, horn, pads, drums) in a generated reverb
 - BFS pathfinding, table-driven loot, resource respawns, wandering livestock,
   mountain-sealed world bounds
 - Autosave to `localStorage`, debounced plus on-exit
@@ -277,7 +290,9 @@ ForgeBound/
 │   │   ├── pathfinding.ts
 │   │   ├── render.ts    #   dual-mode canvas renderer + lighting
 │   │   ├── xp.ts        #   the XP curve + skill table
-│   │   ├── audio.ts     #   WebAudio synth
+│   │   ├── audio.ts     #   WebAudio mixer + sound effects
+│   │   ├── music.ts     #   sequencer, instruments and the four themes
+│   │   ├── soundscape.ts #  ambience that follows the hero
 │   │   └── types.ts
 │   └── components/      # login, HUD, panels, modals, event log
 └── dist/index.html      # ← the game, after one build
@@ -305,7 +320,7 @@ reach the login screen only through their `- **Teaser:**` lines.
 - [x] v0.4.1 — Hands-On: right-click menus, drag / select / use-on backpack, skill guides, minimap zoom
 - [x] v0.4.2 — Prayer: prayer points, combat blessings, an altar, docked side panels, new minimap
 - [x] v0.4.3 — Quests: Old Maro's quest chains, Roka's daily Supply Runs, XP bottles, quest markers
-- [ ] v0.4.4 — Sound & Score: original background music and a full sound-effects pass
+- [x] v0.4.4 — Sound & Score: four original themes, a full sound-effects pass, ambience and NPC voices
 - [ ] v0.5.0 — a ~5× wider realm, the Wildwood, Fletching & Ranged
 - [ ] v0.6.0 — the Vale square rebuilt as a proper village
 - [ ] Light up the remaining 13 skills
