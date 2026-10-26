@@ -22,26 +22,58 @@ these up only if shimmer or flashes show up again.
 
 ---
 
-## v0.4.0 — Quests & Prayer (planned)
+## v0.4.0 — Visuals (planned)
 
-The first real goals beyond grinding: things to *do* with what you gather,
-and something to spend Prayer on. Fits the current map — no new zone needed.
+Make what's already in the game look the part: real icons for every tool
+and weapon, and a distinct animation for every job.
 
-### 📜 Basic Gathering Quests
-- **Teaser:** Your first quests — townsfolk in need of fish, logs and ore
-- A quest-giver NPC (or a notice board in Vale Square) hands out simple
-  fetch quests: "Bring me 10 logs", "5 raw trout", "8 copper + 8 tin ore".
-- Rewards: coins, a skill XP lamp, and occasionally a tool/gear upgrade.
-- A **Quests** tab in the side panel: available / in progress / complete,
-  with a progress counter (e.g. 6/10 logs) that updates from the backpack.
-- Save format: add a `quests` map to the save payload (bump `SAVE_VERSION`
-  with a migration so existing saves keep working).
+### 🗡️ Hand-Drawn Tool & Weapon Icons
+- **Teaser:** Every tool and weapon gets its own hand-drawn icon
+- Most gear still uses shared emojis, and some are simply wrong: the
+  **bronze sword shows ⚔️ (crossed swords)** for what is a single blade.
+- Draw SVG icons (same style as the v0.3.2 ores and v0.3.4 ingots) for:
+  - **Weapons:** bronze sword; bronze / iron / steel daggers (all 🗡️ today)
+  - **Axes:** bronze / iron / steel / mithril (all 🪓)
+  - **Pickaxes:** bronze / iron / steel / mithril (all ⛏️)
+  - **Armour:** bronze platebody (🛡️, a shield, for body armour)
+  - **Fly fishing rod** (🎣)
+- One shared shape per tool type, tinted per metal (bronze / iron / steel /
+  mithril), so tiers read at a glance without relying on the T1–T4 badge.
+- While there: **raw vs cooked chicken** both show 🍗 (raw already has an
+  SVG; give cooked its own), and logs / oak logs (🪵 / 🌳).
+- Files: `src/components/ItemIcon.tsx` (`getSvg` / `getEmoji`).
 
-**Open questions:**
-- Fixed hand-written quest list, or repeatable randomised "daily" tasks too?
-- Do turned-in items get consumed (yes, probably) and must they be in the
-  backpack, or can the bank count?
-- Quest points as a separate tally / unlock gate for later content?
+### 🪓 Distinct Skilling Animations
+- **Teaser:** Every job moves differently — chop, mine, hammer, cast and cook
+- Today every action uses **one generic swing** (`drawPlayer64` in
+  `render.ts`: a `sin(time/70)` arm rotation), so chopping, mining, anvil
+  smithing and combat all look identical. The held item is also a generic
+  stick-and-head coloured by whatever is equipped, not by the job — chopping
+  with a pickaxe equipped shows a pickaxe.
+- Give each job its own pose, timed to the action's cycle:
+  - **Woodcutting:** side-on horizontal swing at trunk height, a "thunk"
+    pause on contact, sawdust on impact.
+  - **Mining:** overhead downward strike, recoil, ore sparks on impact.
+  - **Anvil smithing:** short rapid hammer taps, bright sparks.
+  - **Furnace smelting:** both arms forward feeding ore, glow on the hero.
+  - **Cooking:** arm held out over the fire, slight turning motion.
+  - **Fishing:** cast, then an idle hold with line + bobber on the water.
+  - **Combat:** per weapon — dagger stab, sword slash, unarmed punch.
+  - **Bury bones:** a quick kneel.
+- Draw the *right* tool for the job (axe head, pick head, hammer, rod) in
+  the hand, tinted by its metal tier.
+- Sync impact frames to the action timer so particles and the hit sound land
+  on the swing, not at random.
+- Mirror the 8-bit Legacy renderer with simpler versions of each pose.
+- Pairs with the hand-drawn tool icons above: build the per-tool shapes and
+  metal tints once and use them for both the icon and the in-hand sprite.
+
+---
+
+## v0.4.1 — Hands-On (planned)
+
+Interaction you notice on every click: right-click menus in the world and a
+backpack you can actually handle. Sets up Talk and *use on* for quests.
 
 ### 🖱️ Right-Click Action Menus
 - **Teaser:** Right-click anything for a menu of actions — talk, trade, inspect and more
@@ -64,41 +96,98 @@ and something to spend Prayer on. Fits the current map — no new zone needed.
   (`onContextMenu` → `preventDefault`). Refactor each target's click handling
   into a list of `{ label, run, isDefault }` actions so left-click runs the
   default and right-click renders the list — one source for both.
-- Consider the same pattern for backpack items later (left-click = use/eat/
-  equip, right-click = Use · Drop · Inspect · Sell).
+- The backpack gets the same menu treatment; see **Backpack Interaction**
+  below.
 
 **Open questions:**
 - Long-press on touch/mobile to open the menu?
 - Should the menu list every target stacked on a tile (e.g. a cow standing on
   dropped loot), or only the topmost?
 
-### ✨ Prayer, Properly
+### 🎒 Backpack Interaction — Select, Drag & Use
+- **Teaser:** A hands-on backpack — drag items around, select one and use it on things
+- Today items just sit where they land: left-click auto-uses them (eat /
+  bury / wield) and **right-click instantly drops** them with no menu or
+  confirm, and slots can't be reordered. Jobs pull items out automatically.
+- **Drag to rearrange:** drag an item onto another slot to move it, or onto
+  an occupied slot to swap. Order already persists (the save stores `inv`
+  as an ordered 28-slot array), so this needs no save-format change.
+- **Select → use on:** click an item to *select* it (gold outline, cursor
+  shows the item), then click a target to use it there:
+  - another backpack item (e.g. feathers on logs once Fletching exists),
+  - a world object (raw beef on the campfire, ore on the furnace, logs on
+    the fire), or an NPC (hand quest items to a quest-giver).
+  Esc or clicking empty space cancels the selection.
+- **Default left-click stays quick:** food eats, bones bury, gear wields —
+  matching the world's "left-click = default action" rule. Items with no
+  default (ore, bars, logs) become *select* on left-click.
+- **Right-click menu** (same component as the world menus): Use · Eat /
+  Bury / Wield (whichever applies) · Drop · Inspect · Sell / Deposit (when
+  the shop / bank is open). Drop moves into the menu, so it can't happen by
+  accident.
+- Drag into the open **bank** to deposit, or onto the world to drop
+  (optional nice-to-have).
+- Touch: long-press to pick up / open the menu.
+- Files: `SidePanels.tsx` (`Inventory`), `useGame.ts` (`clickInventorySlot`,
+  `dropSlot`, `depositSlot`); add `moveSlot(from, to)` and a `selected` slot
+  to the game state.
+
+**Open questions:**
+- Shift-click to drop instantly (power-user shortcut), or menu only?
+- Should a selected item stay selected after one use (use many in a row)?
+
+---
+
+## v0.4.2 — Prayer (planned)
+
+Something to spend Prayer on: points, blessings and altars.
+
+### ✨ Prayer Points, Blessings & Altars
 - **Teaser:** Prayer grows teeth — an altar and blessings to call on in battle
 - Prayer is already a live skill, but only for burying bones; there is
   nothing to spend it on yet. Add **Prayer points** (max = Prayer level) and
   a small set of toggleable combat blessings that drain points over time:
   e.g. +5% Defence (lvl 1), +5% Strength (lvl 4), faster HP regen (lvl 7),
   +10% accuracy (lvl 10).
-- A small shrine/altar near spawn to recharge points (and later: offer bones
-  at it for bonus XP).
+- **Altars** recharge prayer points: a small shrine near spawn first (later:
+  offer bones at it for bonus XP, and more altars in the v0.5.0 regions).
+- A **Prayer tab** (or a strip in the Skills tab) listing blessings, their
+  level requirement and drain rate, with a prayer-point bar in the HUD.
+- Leave room for v0.4.3: a quest can unlock a stronger blessing or a second
+  altar (see the crypt idea under Quests).
 - Ties straight into combat — goblins and brigands become the natural
   training loop alongside burying their bones.
 
-### 🗡️ Hand-Drawn Tool & Weapon Icons
-- **Teaser:** Every tool and weapon gets its own hand-drawn icon
-- Most gear still uses shared emojis, and some are simply wrong: the
-  **bronze sword shows ⚔️ (crossed swords)** for what is a single blade.
-- Draw SVG icons (same style as the v0.3.2 ores and v0.3.4 ingots) for:
-  - **Weapons:** bronze sword; bronze / iron / steel daggers (all 🗡️ today)
-  - **Axes:** bronze / iron / steel / mithril (all 🪓)
-  - **Pickaxes:** bronze / iron / steel / mithril (all ⛏️)
-  - **Armour:** bronze platebody (🛡️, a shield, for body armour)
-  - **Fly fishing rod** (🎣)
-- One shared shape per tool type, tinted per metal (bronze / iron / steel /
-  mithril), so tiers read at a glance without relying on the T1–T4 badge.
-- While there: **raw vs cooked chicken** both show 🍗 (raw already has an
-  SVG; give cooked its own), and logs / oak logs (🪵 / 🌳).
-- Files: `src/components/ItemIcon.tsx` (`getSvg` / `getEmoji`).
+---
+
+## v0.4.3 — Quests (planned)
+
+The first real goals beyond grinding. Comes last in the v0.4.x run so quests
+can lean on menus, the backpack and Prayer.
+
+### 📜 Basic Gathering Quests
+- **Teaser:** Your first quests — townsfolk in need of fish, logs and ore
+- A quest-giver NPC (or a notice board in Vale Square) hands out simple
+  fetch quests: "Bring me 10 logs", "5 raw trout", "8 copper + 8 tin ore".
+- Rewards: coins, a skill XP lamp, and occasionally a tool/gear upgrade.
+- A **Quests** tab in the side panel: available / in progress / complete,
+  with a progress counter (e.g. 6/10 logs) that updates from the backpack.
+- Save format: add a `quests` map to the save payload (bump `SAVE_VERSION`
+  with a migration so existing saves keep working).
+
+- **Built last on purpose:** quests can then use everything from v0.4.0–
+  v0.4.2 — Talk menus, handing items over with *use on*, and Prayer.
+- **First Prayer quest idea:** an old crypt beneath the chapel/shrine,
+  sealed since the goblins came. Bring the priest bones and candles (or
+  similar), clear the restless dead inside, and earn a new blessing or a
+  blessed altar that recharges faster. A small instanced area or a fenced-off
+  corner of the map works until the v0.5.0 world expansion.
+
+**Open questions:**
+- Fixed hand-written quest list, or repeatable randomised "daily" tasks too?
+- Do turned-in items get consumed (yes, probably) and must they be in the
+  backpack, or can the bank count?
+- Quest points as a separate tally / unlock gate for later content?
 
 ---
 
@@ -146,9 +235,9 @@ current valley becomes one region of many. First new zone, working name:
   - **A highland mining camp** — higher-tier ore (mithril), a second
     furnace/anvil, tougher foes guarding it.
   - **Ruins / a second settlement** — quest-givers, a bank, Roka-style
-    trader, Prayer altar (ties into v0.4.0).
+    trader, Prayer altar (ties into v0.4.2).
 - Roads linking regions, with landmarks so travel reads as a journey.
-- Gate deeper regions by level or quest (e.g. v0.4.0 starter quests).
+- Gate deeper regions by level or quest (e.g. v0.4.3 starter quests).
 - Tougher foes for mid-level combat, with better drops.
 - Consider releasing in steps: v0.5.0 = groundwork + Wildwood, later
   point releases add the remaining regions.
@@ -188,9 +277,9 @@ the people and services already there.
   - **Roka's trading post** — a shopfront
   - **Old Maro's cottage** — the guide's house
   - **Inn / tavern** — campfire cooking moves to a hearth; a natural home
-    for quest-givers (ties into v0.4.0 quests and Talk menus)
+    for quest-givers (ties into v0.4.3 quests and v0.4.1 Talk menus)
   - Homes for villagers, a well, market stalls, a chapel or shrine
-    (pairs with the v0.4.0 Prayer altar)
+    (pairs with the v0.4.2 Prayer altar)
 - **How buildings work (decide at build time):**
   - *Exterior-only* — walls block, a door tile is the way in, the roof fades
     out when the hero walks inside (classic top-down approach; fits the

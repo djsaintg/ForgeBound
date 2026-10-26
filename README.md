@@ -233,7 +233,10 @@ reach the login screen only through their `- **Teaser:**` lines.
 - [x] v0.3.2 — gathering fixes: gather from any distance, distinct ore icons
 - [x] v0.3.3 — locked hero name, Abandon & Restart, self-writing builder's notes, fullscreen
 - [x] v0.3.4 — resizable panels, action banner & HUD under the compass, ingot icons
-- [ ] v0.4.0 — gathering quests, right-click action menus, Prayer blessings
+- [ ] v0.4.0 — Visuals: hand-drawn tool & weapon icons, distinct skilling animations
+- [ ] v0.4.1 — Hands-On: right-click action menus, drag / select / use-on backpack
+- [ ] v0.4.2 — Prayer: prayer points, combat blessings, altars
+- [ ] v0.4.3 — Quests: gathering quests and a first Prayer quest
 - [ ] v0.5.0 — a ~5× wider realm, the Wildwood, Fletching & Ranged
 - [ ] v0.6.0 — the Vale square rebuilt as a proper village
 - [ ] Light up the remaining 13 skills
