@@ -22,93 +22,6 @@ these up only if shimmer or flashes show up again.
 
 ---
 
-## v0.4.1 — Hands-On (planned)
-
-Interaction you notice on every click: right-click menus in the world and a
-backpack you can actually handle, plus clickable skill guides. Sets up Talk
-and *use on* for quests.
-
-### 🖱️ Right-Click Action Menus
-- **Teaser:** Right-click anything for a menu of actions — talk, trade, inspect and more
-- **Left-click stays as-is:** walk to a tile, or perform the target's
-  *default* action (Roka → open the trading post, tree → chop, rock → mine,
-  goblin → attack, ground item → pick up).
-- **Right-click opens a context menu** at the cursor listing every action for
-  whatever is under it, default first. Examples:
-  - **Roka:** Talk · Trade (open trading post) · Inspect
-  - **Tree / rock / fishing spot:** Chop / Mine / Fish · Inspect
-  - **Goblin / brigand / cow / hen:** Attack · Inspect (level, HP)
-  - **Ground item:** Take · Inspect
-  - **Empty tile:** Walk here
-- **Talk** gives NPCs a few lines of dialogue, and it's the hook the quest
-  system uses (quest-givers offer and turn in quests through Talk).
-- **Inspect** prints a flavour/stat line to the Adventurer's Log.
-- Menu closes on choosing an option, clicking elsewhere, Escape, or moving
-  the mouse well away from it. Styled to match the glass panels.
-- Build note: `WorldCanvas.tsx` currently swallows right-clicks
-  (`onContextMenu` → `preventDefault`). Refactor each target's click handling
-  into a list of `{ label, run, isDefault }` actions so left-click runs the
-  default and right-click renders the list — one source for both.
-- The backpack gets the same menu treatment; see **Backpack Interaction**
-  below.
-
-**Open questions:**
-- Long-press on touch/mobile to open the menu?
-- Should the menu list every target stacked on a tile (e.g. a cow standing on
-  dropped loot), or only the topmost?
-
-### 📜 Skill Guides — click a skill to see what it unlocks
-- **Teaser:** Click any skill to see what your level lets you do, and what comes next
-- Every skill in the **Skills** tab becomes clickable and opens a guide
-  window (glass panel, same style as the bank/shop) showing:
-  - current level, XP, and XP to the next level,
-  - a list of everything the skill unlocks, in level order, each marked
-    ✔ available or 🔒 locked with the level it needs. Example at
-    Woodcutting 4: ✔ Trees (lvl 1) · 🔒 Oak trees (lvl 15),
-  - tools tied to the skill (axes / pickaxes by tier and the level to wield
-    them, the fly rod, etc.),
-  - for production skills, the recipes (Smithing: bars at the furnace, then
-    daggers / swords / platebody at the anvil; Cooking: each food and its
-    heal amount).
-- Built from the existing data tables (`RESOURCES`, `RECIPES`, `ITEMS`) so
-  new content shows up in the guide automatically.
-- Skills with no content yet show a short "coming in a future update" note.
-- Pairs with the right-click menus: right-click a skill → *View guide*.
-
-### 🎒 Backpack Interaction — Select, Drag & Use
-- **Teaser:** A hands-on backpack — drag items around, select one and use it on things
-- Today items just sit where they land: left-click auto-uses them (eat /
-  bury / wield) and **right-click instantly drops** them with no menu or
-  confirm, and slots can't be reordered. Jobs pull items out automatically.
-- **Drag to rearrange:** drag an item onto another slot to move it, or onto
-  an occupied slot to swap. Order already persists (the save stores `inv`
-  as an ordered 28-slot array), so this needs no save-format change.
-- **Select → use on:** click an item to *select* it (gold outline, cursor
-  shows the item), then click a target to use it there:
-  - another backpack item (e.g. feathers on logs once Fletching exists),
-  - a world object (raw beef on the campfire, ore on the furnace, logs on
-    the fire), or an NPC (hand quest items to a quest-giver).
-  Esc or clicking empty space cancels the selection.
-- **Default left-click stays quick:** food eats, bones bury, gear wields —
-  matching the world's "left-click = default action" rule. Items with no
-  default (ore, bars, logs) become *select* on left-click.
-- **Right-click menu** (same component as the world menus): Use · Eat /
-  Bury / Wield (whichever applies) · Drop · Inspect · Sell / Deposit (when
-  the shop / bank is open). Drop moves into the menu, so it can't happen by
-  accident.
-- Drag into the open **bank** to deposit, or onto the world to drop
-  (optional nice-to-have).
-- Touch: long-press to pick up / open the menu.
-- Files: `SidePanels.tsx` (`Inventory`), `useGame.ts` (`clickInventorySlot`,
-  `dropSlot`, `depositSlot`); add `moveSlot(from, to)` and a `selected` slot
-  to the game state.
-
-**Open questions:**
-- Shift-click to drop instantly (power-user shortcut), or menu only?
-- Should a selected item stay selected after one use (use many in a row)?
-
----
-
 ## v0.4.2 — Prayer (planned)
 
 Something to spend Prayer on: points, blessings and altars.
@@ -226,9 +139,10 @@ current valley becomes one region of many. First new zone, working name:
 **Engine groundwork (small — do first, no new content yet):**
 - **Renderer & pathfinding: already fine.** Drawing only covers tiles on
   screen, and BFS over ~10k tiles is trivial. No real cost there.
-- **Minimap → radar.** `Minimap.tsx` draws the *entire* map at 3 px/tile
-  (216×156 px today). At 5× that's ~375×240 — too big. Turn it into a
-  player-centred radar window (fixed size, scrolls with the hero), keeping
+- **Minimap → radar.** Since v0.4.1 the minimap zooms (1×–4×) and follows
+  the hero when zoomed in, but its base layer is still the *entire* map at
+  3 px/tile (216×156 px today; ~375×240 at 5×). Drop the 1× "whole realm"
+  step (or cap it) so it's a true player-centred radar, keeping
   click-to-travel; optionally add a full **World Map** overlay (key `M`).
 - **The 8-tile padding exists only so the full-map compass never covers
   playable ground.** With a radar it can shrink to a slim mountain rim.

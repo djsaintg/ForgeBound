@@ -3,6 +3,79 @@
 All notable changes to **ForgeBound**. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project follows semver.
 
+## [0.4.1] — Gamma v0.4.1 · Hands-On — 2026-10-26
+
+Interaction you notice on every click: right-click menus in the world, a
+backpack you can actually handle, clickable skill guides and a minimap you
+can zoom.
+
+### Added
+
+- Right-click menus on everything in the world, opened at the cursor. Every
+  action for whatever is on the tile is listed, default first, and
+  left-click still does the default. Roka: Trade · Talk to · Inspect. Old
+  Maro: Talk to · Inspect. Trees, rocks and fishing spots: Chop down / Mine
+  / Net / Lure · Inspect. Furnace, anvil, campfire and bank booth: open ·
+  Inspect. Goblins, brigands, cows and hens: Attack · Inspect (level and
+  HP). Loot: Take · Inspect. Every tile: Walk here. A tile with several
+  things on it (a cow standing on loot, say) lists them all. The menu
+  closes when you pick an option, click elsewhere (which only dismisses it),
+  press Escape or move the mouse away
+- Talk: Roka and Old Maro each have lines of their own. You have to be
+  within 2 tiles to talk to them. From further away the hero walks over
+  first
+- Inspect: a line about anything in the world or the backpack, written to
+  the Adventurer's Log: what it is, levels needed, HP, heal amount, what
+  Roka pays for it. Inspecting doesn't interrupt what the hero is doing
+- Select and use on: left-click an item with no obvious use (ore, bars, raw
+  food, logs) or choose Use from its menu to pick it up. It gets a gold
+  outline, follows the cursor, and a "Use … on…" tag appears over the world.
+  Then click what to use it on: ore on the furnace smelts, raw food on the
+  campfire cooks, a bar on the anvil smiths, an item on the bank booth
+  deposits it, an item on Roka gets a price. If more than one recipe fits,
+  the recipe list opens instead. Esc or clicking empty ground puts the item
+  back
+- Drag and drop in the backpack: drag an item onto another slot to move it
+  or swap the two. Drag it into the open bank window to deposit it, or let
+  go anywhere outside the backpack (the world, the log) to drop it on the
+  ground. Touch works too: press and slide to drag, hold still to open the
+  menu
+- Backpack right-click menu: Eat / Bury / Wield / Wear (whichever applies) ·
+  Use · Drop · Inspect, plus Deposit or Sell first in the bank and shop
+  windows. Shift-click drops instantly
+- Skill guides: click any skill (or right-click → View guide) for its level,
+  XP and XP to the next level, and everything it unlocks in level order,
+  each marked ✔ or 🔒: resources, tools with their speed bonus and the
+  level to wield them, recipes with inputs, XP and heal amounts, weapons,
+  armour, food and foes. Built from the game's data tables, so new content
+  shows up without editing the guide. Skills with nothing in them yet say
+  they're coming in a future update
+- Minimap zoom: − and + under the compass, or scroll over the map, step
+  between 1× (the whole realm, as before) and 4×. When zoomed in, the map
+  follows the hero, and click-to-travel still works. The zoom is
+  remembered, and starts at 2×
+- Wield levels: the steel axe and steel pickaxe need level 6 Woodcutting /
+  Mining and the mithril ones level 21. The steel dagger needs Attack 5.
+  When a job picks up a tool automatically it takes the best one you can
+  wield
+
+### Changed
+
+- Right-clicking a backpack item opens its menu instead of instantly dropping
+  it, so nothing gets dropped by accident
+- Anything left on the ground (dropped items, loot, laid eggs) vanishes
+  after two minutes and blinks for its last 15 seconds. Before, only eggs
+  spoiled. Items still on the ground in a save get a fresh two minutes when
+  you load
+- Clicking loot from a distance walks over and picks it up in one go. It
+  used to take a second click on arrival
+- Wielding gear from the backpack puts the old piece in that same slot
+- Inspecting or talking no longer cancels the job in hand
+
+### Fixed
+
+- Eating said "a egg" instead of "an egg" (and so on for every vowel)
+
 ## [0.4.0] — Gamma v0.4.0 · Visuals — 2026-10-26
 
 Make what's already in the game look the part: a hero and townsfolk who

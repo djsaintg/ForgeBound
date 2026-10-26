@@ -3,7 +3,7 @@
 **A single-player action-RPG that lives in one HTML file.**
 Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
-`v0.4.0 — Gamma Visuals` · `100% offline` · `MIT licensed`
+`v0.4.1 — Gamma Hands-On` · `100% offline` · `MIT licensed`
 
 ---
 
@@ -11,7 +11,22 @@ Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
 [![Sponsor](https://raw.githubusercontent.com/djsaintg/djsaintg/main/sponsor.svg)](https://buymeacoffee.com/djsaintg)
 
-## What's new in v0.4.0
+## What's new in v0.4.1
+
+- **Right-click anything** — a menu of every action for whatever is under
+  the cursor: Talk, Trade, Attack, Inspect, Take and more. Left-click still
+  does the obvious thing
+- **A backpack you can handle** — drag to rearrange, drag into the bank to
+  deposit or out onto the world to drop. Pick an item up and use it on
+  things: ore on the furnace, raw food on the fire. Works on touch too
+- **Skill guides** — click a skill to see what your level unlocks, what
+  comes next, and the tools and recipes that go with it
+- **Zoomable minimap** — − / + or scroll to zoom in and follow the hero
+- **Tidier ground** — anything left lying around vanishes after two minutes
+- **Wield levels** — steel and mithril tools and blades need the skill to
+  match
+
+## v0.4.0 — Visuals
 
 - **People and animals with real bodies** — the hero, goblins and
   townsfolk have heads, shoulders, elbows and knees and walk in all four
@@ -182,7 +197,9 @@ quests and deeper systems arrive.
 | Do this                                     | To…                                              |
 | ------------------------------------------- | ------------------------------------------------ |
 | Left-click the ground                       | Walk (pathfinding handles the rest)              |
+| Right-click anything (world or backpack)    | See every action: Talk, Trade, Inspect, Drop…    |
 | Mouse-wheel over the world                  | Zoom the camera in and out                       |
+| − / + or mouse-wheel on the minimap         | Zoom the minimap                                 |
 | Left-click a tree, rock or fishing spot     | Gather — repeatedly, automatically               |
 | Left-click a goblin or brigand              | Fight — auto-attacks until it falls              |
 | Left-click a cow or chicken                 | Farm it — meat, bones and feathers               |
@@ -194,9 +211,12 @@ quests and deeper systems arrive.
 | Left-click Roka                             | Buy tools, sell your haul                        |
 | Click food in your inventory                | Eat it (+HP)                                     |
 | Click a tool in your inventory              | Wield it — better tiers work faster              |
-| Right-click an inventory slot               | Drop it                                          |
+| Click ore, bars or raw food, then a target  | Use it there — furnace, anvil, campfire, bank    |
+| Drag an inventory item                      | Move it, deposit it in the bank, or drop it      |
+| Shift-click an inventory item               | Drop it                                          |
+| Click a skill                               | Open its guide — unlocks, tools, recipes         |
 | Gear button in the side panel               | Engine settings — zoom, render mode, audio       |
-| `Esc`                                       | Close any panel                                  |
+| `Esc`                                       | Close any panel, or put down a held item         |
 
 ## Under the hood
 
@@ -250,7 +270,7 @@ reach the login screen only through their `- **Teaser:**` lines.
 - [x] v0.3.3 — locked hero name, Abandon & Restart, self-writing builder's notes, fullscreen
 - [x] v0.3.4 — resizable panels, action banner & HUD under the compass, ingot icons
 - [x] v0.4.0 — Visuals: jointed people & livestock, 4-way movement, per-job animations, gear icons, new rocks
-- [ ] v0.4.1 — Hands-On: right-click action menus, drag / select / use-on backpack, skill guides
+- [x] v0.4.1 — Hands-On: right-click menus, drag / select / use-on backpack, skill guides, minimap zoom
 - [ ] v0.4.2 — Prayer: prayer points, combat blessings, altars
 - [ ] v0.4.3 — Quests: gathering quests and a first Prayer quest
 - [ ] v0.4.4 — Sound & Score: original background music and a full sound-effects pass
