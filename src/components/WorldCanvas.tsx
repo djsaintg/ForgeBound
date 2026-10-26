@@ -47,37 +47,28 @@ export function WorldCanvas({ api }: { api: GameApi }) {
         const ctx = canvas.getContext("2d")!;
         let raf = 0;
         let last = performance.now();
-        let w = 0, h = 0, dpr = 1;
+        let w = 0, h = 0, dpr = 0;
 
+        // Assigning canvas.width/height wipes the canvas, so only touch it when the
+        // size really changed — and repaint straight away so dragging a panel
+        // edge never shows a blank frame.
         const resize = () => {
-            dpr = Math.min(2, window.devicePixelRatio || 1);
-            w = wrap.clientWidth;
-            h = wrap.clientHeight;
+            const nd = Math.min(2, window.devicePixelRatio || 1);
+            const nw = wrap.clientWidth;
+            const nh = wrap.clientHeight;
+            if (nw === w && nh === h && nd === dpr) return;
+            dpr = nd; w = nw; h = nh;
             canvas.width = Math.max(1, Math.floor(w * dpr));
             canvas.height = Math.max(1, Math.floor(h * dpr));
             canvas.style.width = `${w}px`;
             canvas.style.height = `${h}px`;
+            paint(performance.now(), 0);
         };
-        resize();
-        const ro = new ResizeObserver(resize);
-        ro.observe(wrap);
 
-        const loop = (t: number) => {
-            raf = requestAnimationFrame(loop);
-            const dt = Math.min(64, t - last);
-            last = t;
+        // Camera follow + draw; dt 0 repaints the current frame without advancing it.
+        const paint = (t: number, dt: number) => {
             const g = api.gref.current;
             if (!g || w === 0) return;
-
-            api.update(dt, t);
-
-            // re-render the React panels only when something visible changed
-            const sig = uiSignature(g);
-            if (sig !== lastSigRef.current) {
-                lastSigRef.current = sig;
-                api.bump();
-            }
-
             const zoom = g.zoom || 2.2;
             const effTile = tileSize(zoom);
 
@@ -111,6 +102,29 @@ export function WorldCanvas({ api }: { api: GameApi }) {
                 facing: facingRef.current,
             });
         };
+
+        const loop = (t: number) => {
+            raf = requestAnimationFrame(loop);
+            const dt = Math.min(64, t - last);
+            last = t;
+            const g = api.gref.current;
+            if (!g || w === 0) return;
+
+            api.update(dt, t);
+
+            // re-render the React panels only when something visible changed
+            const sig = uiSignature(g);
+            if (sig !== lastSigRef.current) {
+                lastSigRef.current = sig;
+                api.bump();
+            }
+
+            paint(t, dt);
+        };
+
+        resize();
+        const ro = new ResizeObserver(resize);
+        ro.observe(wrap);
         raf = requestAnimationFrame(loop);
         return () => {
             cancelAnimationFrame(raf);

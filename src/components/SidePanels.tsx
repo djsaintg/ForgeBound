@@ -65,7 +65,7 @@ function Inventory({ api, g }: { api: GameApi; g: GameState }) {
           {fmt(g.coins)}
         </span>
       </div>
-      <div className="grid grid-cols-4 gap-1.5">
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1.5">
         {g.inv.map((slot, i) => (
           <button
             key={i}

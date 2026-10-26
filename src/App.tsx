@@ -4,13 +4,19 @@ import { WorldCanvas } from "./components/WorldCanvas";
 import { Minimap } from "./components/Minimap";
 import { EventFeed } from "./components/EventFeed";
 import { XpOrbs } from "./components/XpOrbs";
+import { ActionBanner } from "./components/ActionBanner";
 import { SidePanels } from "./components/SidePanels";
 import { BankModal, ShopModal, StationModal, SettingsModal } from "./components/Modals";
 import { LevelUpOverlay } from "./components/LevelUpOverlay";
 import { ItemIcon } from "./components/ItemIcon";
+import { ResizeHandle, useStoredSize } from "./components/ResizeHandle";
 import { clearSave, savedName, useGame } from "./game/useGame";
 import { sfx } from "./game/audio";
 import { fmt, totalLevel } from "./game/xp";
+
+// Drag limits for the docked panels — the map always keeps at least ~45% of the screen.
+const panelMax = () => Math.min(560, window.innerWidth * 0.45);
+const logMax = () => Math.max(120, window.innerHeight * 0.5);
 
 export default function App() {
   const [screen, setScreen] = useState<"login" | "game">("login");
@@ -50,6 +56,8 @@ function GameScreen({ name, cont, onExit }: { name: string; cont: boolean; onExi
   const [muted, setMuted] = useState(sfx.isMuted());
   const [savedTick, setSavedTick] = useState(0);
   const [showPanel, setShowPanel] = useState(false);
+  const panel = useStoredSize("forgebound-panel-width", 290, 260, panelMax);
+  const log = useStoredSize("forgebound-log-height", 158, 90, logMax);
   const rc = useRef(0);
   rc.current++;
 
@@ -159,15 +167,25 @@ function GameScreen({ name, cont, onExit }: { name: string; cont: boolean; onExi
       </header>
 
       {/* world + side panel */}
-      <div className="relative flex min-h-0 flex-1 gap-2 p-2">
+      <div className="relative flex min-h-0 flex-1 px-2 pt-2">
         <div className="relative min-w-0 flex-1 overflow-hidden rounded-md border border-[#5c4a2a]/80 bg-black shadow-[inset_0_0_40px_rgba(0,0,0,0.8)]">
           <WorldCanvas api={api} />
-          <XpOrbs g={g} />
-          <div className="pointer-events-none absolute right-2.5 top-2.5">
+          {/* compass, then the action banner and XP orbs stacked beneath it */}
+          <div className="pointer-events-none absolute right-2.5 top-2.5 flex w-[220px] flex-col items-center gap-2">
             <Minimap api={api} />
+            <ActionBanner api={api} />
+            <XpOrbs g={g} />
           </div>
         </div>
-        <div className="hidden w-[290px] shrink-0 md:block">
+        <ResizeHandle
+          axis="x"
+          size={panel.size}
+          onResize={panel.set}
+          onCommit={panel.persist}
+          onReset={panel.reset}
+          className="hidden md:flex"
+        />
+        <div className="hidden shrink-0 md:block" style={{ width: panel.size }}>
           <SidePanels api={api} g={g} />
         </div>
         {showPanel && (
@@ -183,7 +201,8 @@ function GameScreen({ name, cont, onExit }: { name: string; cont: boolean; onExi
       </div>
 
       {/* adventurer's log */}
-      <div className="h-[158px] shrink-0 px-2 pb-2">
+      <ResizeHandle axis="y" size={log.size} onResize={log.set} onCommit={log.persist} onReset={log.reset} />
+      <div className="shrink-0 px-2 pb-2" style={{ height: log.size }}>
         <EventFeed g={g} />
       </div>
     </div>

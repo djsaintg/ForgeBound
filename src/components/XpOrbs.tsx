@@ -6,7 +6,7 @@ export function XpOrbs({ g }: { g: GameState }) {
     const evs = g.xpEvents.filter((e) => now - e.t < 4600).slice(-5);
     if (evs.length === 0) return null;
     return (
-        <div className="pointer-events-none absolute left-3 top-3 flex flex-col gap-2">
+        <div className="flex flex-col items-center gap-2">
         {evs.map((e) => {
             const meta = SKILL_BY_ID[e.skill];
             const age = now - e.t;
