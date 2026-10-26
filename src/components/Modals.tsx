@@ -2,13 +2,17 @@ import React, { useState } from "react";
 import type { GameState, ItemId } from "../game/types";
 import type { GameApi } from "../game/useGame";
 import { ITEMS, RECIPES, SELL_RATIO, SHOP_STOCK, STATION_NAMES } from "../game/data";
-import { SKILL_BY_ID, fmt, levelForXp } from "../game/xp";
+import { SKILL_BY_ID, fmt, levelForXp, progressIntoLevel } from "../game/xp";
+import { skillGuide } from "../game/guide";
 import { ItemIcon } from "./ItemIcon";
+import { useContextMenu } from "./ContextMenu";
+import { slotDragProps, useTouchSlotDrag } from "./SlotDrag";
 import { sfx } from "../game/audio";
 import { enterFullscreen, exitFullscreen, fullscreenSupported, setFullscreenPref, useFullscreen } from "../game/fullscreen";
 import { Maximize2, Minimize2, Monitor, RotateCcw, Save, Sparkles, Volume2, VolumeX, ZoomIn } from "lucide-react";
 
-function Backdrop({ onClose, children }: { onClose: () => void; children: React.ReactNode }) {
+/** `drop` says what a backpack item dragged onto the window does (see SlotDrag). */
+function Backdrop({ onClose, children, drop = "keep" }: { onClose: () => void; children: React.ReactNode; drop?: "keep" | "bank" }) {
     return (
         <div
         className="absolute inset-0 z-40 flex items-center justify-center bg-black/60 p-4 backdrop-blur-[2px]"
@@ -16,6 +20,7 @@ function Backdrop({ onClose, children }: { onClose: () => void; children: React.
         style={{ animation: "fadeIn 0.15s ease-out" }}
         >
         <div
+        data-drop={drop}
         onClick={(e) => e.stopPropagation()}
         className="rs-panel w-full max-w-xl"
         style={{ animation: "modalIn 0.18s ease-out" }}
@@ -110,12 +115,35 @@ export function StationModal({ api, g }: { api: GameApi; g: GameState }) {
 }
 
 // -------------------------------------------------------------------- bank --
+/** A backpack slot inside the bank: click deposits, drag rearranges or deposits into the vault. */
+function BankInvSlot({ api, i, item, n }: { api: GameApi; i: number; item: ItemId; n: number }) {
+    const openMenu = useContextMenu();
+    const touch = useTouchSlotDrag(api, i, item);
+    return (
+        <button
+            {...slotDragProps(i, true)}
+            {...touch.handlers}
+            style={{ touchAction: "none" }}
+            onClick={() => { if (!touch.dragged()) api.depositSlot(i); }}
+            onContextMenu={(e) => { e.preventDefault(); openMenu(e.clientX, e.clientY, api.slotActions(i)); }}
+            className="relative flex aspect-square items-center justify-center rounded-sm border border-[#2a2115] bg-[#171008] transition-all hover:border-[#d8b25c]"
+            title={`Deposit ${ITEMS[item].name} — or drag it into the vault; right-click for options`}
+        >
+            <ItemIcon item={item} size={26} />
+            {n > 1 && (
+                <span className="absolute bottom-0 right-0.5 text-[9px] font-bold text-[#f0e0b0] [text-shadow:0_1px_2px_#000]">{n}</span>
+            )}
+            {touch.ghost}
+        </button>
+    );
+}
+
 export function BankModal({ api, g }: { api: GameApi; g: GameState }) {
     if (!g.bankOpen) return null;
     const bankItems = Object.entries(g.bank).filter(([, n]) => n && n > 0);
     const rows = Math.min(12, Math.max(6, Math.ceil(bankItems.length / 6) || 6));
     return (
-        <Backdrop onClose={api.closeOverlays}>
+        <Backdrop onClose={api.closeOverlays} drop="bank">
         <Header title="BANK OF FORGEBOUND" onClose={api.closeOverlays} />
         <div className="grid grid-cols-1 gap-3 p-3 sm:grid-cols-2">
             {/* Vault — fixed 6-column grid, grows a row at a time */}
@@ -158,19 +186,9 @@ export function BankModal({ api, g }: { api: GameApi; g: GameState }) {
                 <div className="chat-scroll grid max-h-64 grid-cols-4 content-start gap-1.5 overflow-y-auto rounded-sm border border-[#3a2f1e] bg-[#0f0b08] p-1.5">
                     {g.inv.map((s, i) =>
                         s && s.item !== "coins" ? (
-                            <button
-                                key={i}
-                                onClick={() => api.depositSlot(i)}
-                                className="relative flex aspect-square items-center justify-center rounded-sm border border-[#2a2115] bg-[#171008] transition-all hover:border-[#d8b25c]"
-                                title={`Deposit ${ITEMS[s.item].name}`}
-                            >
-                                <ItemIcon item={s.item} size={26} />
-                                {s.n > 1 && (
-                                    <span className="absolute bottom-0 right-0.5 text-[9px] font-bold text-[#f0e0b0] [text-shadow:0_1px_2px_#000]">{s.n}</span>
-                                )}
-                            </button>
+                            <BankInvSlot key={i} api={api} i={i} item={s.item} n={s.n} />
                         ) : (
-                            <div key={i} className="aspect-square rounded-sm border border-dashed border-[#2a2115] bg-[#0c0906] opacity-40" />
+                            <div key={i} data-slot={i} className="aspect-square rounded-sm border border-dashed border-[#2a2115] bg-[#0c0906] opacity-40" />
                         )
                     )}
                 </div>
@@ -182,6 +200,7 @@ export function BankModal({ api, g }: { api: GameApi; g: GameState }) {
 
 // -------------------------------------------------------------------- shop --
 export function ShopModal({ api, g }: { api: GameApi; g: GameState }) {
+    const openMenu = useContextMenu();
     if (!g.shopOpen) return null;
     return (
         <Backdrop onClose={api.closeOverlays}>
@@ -219,7 +238,11 @@ export function ShopModal({ api, g }: { api: GameApi; g: GameState }) {
                     )}
                     {g.inv.map((s, i) =>
                         s && s.item !== "coins" ? (
-                            <div key={i} className="flex items-center gap-2 rounded-sm border border-[#2a2115] bg-[#171008] px-2 py-1.5">
+                            <div
+                                key={i}
+                                onContextMenu={(e) => { e.preventDefault(); openMenu(e.clientX, e.clientY, api.slotActions(i)); }}
+                                className="flex items-center gap-2 rounded-sm border border-[#2a2115] bg-[#171008] px-2 py-1.5"
+                            >
                                 <ItemIcon item={s.item} size={20} />
                                 <span className="flex-1 truncate text-[12px] font-bold text-[#e0d6c0]">{ITEMS[s.item].name}</span>
                                 {s.n > 1 && <span className="text-[11px] text-[#c8b070]">×{s.n}</span>}
@@ -325,6 +348,84 @@ export function SettingsModal({ api, g }: { api: GameApi; g: GameState }) {
                     <RotateCcw className="h-3.5 w-3.5" /> Reset / new character
                 </button>
             </div>
+        </div>
+        </Backdrop>
+    );
+}
+
+// ------------------------------------------------------------ skill guide --
+export function SkillGuideModal({ api, g }: { api: GameApi; g: GameState }) {
+    if (!g.guide) return null;
+    const skill = SKILL_BY_ID[g.guide];
+    const xp = g.xp[skill.id] ?? 0;
+    const lvl = levelForXp(xp);
+    const prog = progressIntoLevel(xp);
+    const { sections, notes } = skillGuide(skill.id);
+    return (
+        <Backdrop onClose={api.closeOverlays}>
+        <Header title={`${skill.name.toUpperCase()} GUIDE`} onClose={api.closeOverlays} />
+        <div className="chat-scroll flex max-h-[70vh] flex-col gap-3 overflow-y-auto p-3">
+            <div className="flex items-center gap-3 rounded-sm border border-[#3a2f1e] bg-[#14100a] px-3 py-2.5">
+                <span
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 text-[18px]"
+                    style={{ borderColor: skill.color, background: "rgba(0,0,0,0.35)" }}
+                >
+                    {skill.icon}
+                </span>
+                <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline justify-between">
+                        <span className="font-display text-[15px] font-black text-[#e8c876]">Level {lvl}</span>
+                        <span className="text-[11px] text-[#8a7a52]">{fmt(xp)} XP</span>
+                    </div>
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-[#0c0906]">
+                        <div className="h-full rounded-full" style={{ width: `${prog.pct * 100}%`, background: `linear-gradient(90deg, ${skill.color}, #d8b25c)` }} />
+                    </div>
+                    <div className="mt-1 text-[10.5px] text-[#8a7a52]">
+                        {lvl >= 99 ? "Mastered." : `${fmt(prog.next - prog.cur)} XP to level ${lvl + 1}`}
+                    </div>
+                </div>
+            </div>
+
+            {!skill.impl && (
+                <p className="rounded-sm border border-dashed border-[#3a2f1e] px-3 py-4 text-center text-[12px] italic text-[#8a7a52]">
+                    {skill.name} is coming in a future update.
+                </p>
+            )}
+
+            {sections.map((sec) => (
+                <div key={sec.title}>
+                    <div className="mb-1 text-[10px] font-bold uppercase tracking-[0.18em] text-[#8a7a52]">{sec.title}</div>
+                    <div className="flex flex-col gap-1">
+                        {sec.rows.map((row) => {
+                            const locked = row.level !== undefined && lvl < row.level;
+                            return (
+                                <div
+                                    key={row.label}
+                                    className={`flex items-center gap-2.5 rounded-sm border px-2.5 py-1.5 ${
+                                        locked ? "border-[#241c12] bg-[#120e09]" : "border-[#3a2f1e] bg-[#1a140c]"
+                                    }`}
+                                >
+                                    <span className="w-4 shrink-0 text-center text-[12px]" title={locked ? "Locked" : "Available"}>
+                                        {row.level === undefined ? <span className="text-[#5a4c32]">•</span> : locked ? "🔒" : <span className="text-[#7ee06a]">✔</span>}
+                                    </span>
+                                    {row.item && <span className={locked ? "opacity-50" : ""}><ItemIcon item={row.item} size={22} /></span>}
+                                    <span className="min-w-0 flex-1">
+                                        <span className={`block truncate text-[12px] font-bold ${locked ? "text-[#8a7a52]" : "text-[#e0d6c0]"}`}>{row.label}</span>
+                                        <span className="block truncate text-[10.5px] text-[#8a7a52]">{row.detail}</span>
+                                    </span>
+                                    {row.level !== undefined && (
+                                        <span className={`shrink-0 text-[11px] font-bold ${locked ? "text-[#ff8a72]" : "text-[#c8b070]"}`}>Lvl {row.level}</span>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            ))}
+
+            {notes.map((n) => (
+                <p key={n} className="px-1 text-[10.5px] leading-snug text-[#6a5a3a]">{n}</p>
+            ))}
         </div>
         </Backdrop>
     );

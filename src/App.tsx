@@ -6,7 +6,9 @@ import { EventFeed } from "./components/EventFeed";
 import { XpOrbs } from "./components/XpOrbs";
 import { ActionBanner } from "./components/ActionBanner";
 import { SidePanels } from "./components/SidePanels";
-import { BankModal, ShopModal, StationModal, SettingsModal } from "./components/Modals";
+import { BankModal, ShopModal, SkillGuideModal, StationModal, SettingsModal } from "./components/Modals";
+import { ContextMenuProvider } from "./components/ContextMenu";
+import { useSlotDropAnywhere } from "./components/SlotDrag";
 import { LevelUpOverlay } from "./components/LevelUpOverlay";
 import { ItemIcon } from "./components/ItemIcon";
 import { ResizeHandle, useStoredSize } from "./components/ResizeHandle";
@@ -60,6 +62,7 @@ function GameScreen({ name, cont, onExit }: { name: string; cont: boolean; onExi
   const log = useStoredSize("forgebound-log-height", 158, 90, logMax);
   const rc = useRef(0);
   rc.current++;
+  useSlotDropAnywhere(api);
 
   useEffect(() => {
     api.start(name, cont);
@@ -102,6 +105,7 @@ function GameScreen({ name, cont, onExit }: { name: string; cont: boolean; onExi
   const g = api.g();
 
   return (
+    <ContextMenuProvider onChoose={api.bump}>
     <div className="flex h-screen flex-col overflow-hidden bg-[#0c0a07] text-[#e0d6c0]">
       {/* top bar */}
       <header className="flex h-11 shrink-0 items-center gap-2.5 border-b border-[#3a2f1e] bg-gradient-to-b from-[#1c1610] to-[#120e09] px-3">
@@ -197,6 +201,7 @@ function GameScreen({ name, cont, onExit }: { name: string; cont: boolean; onExi
         <BankModal api={api} g={g} />
         <ShopModal api={api} g={g} />
         <SettingsModal api={api} g={g} />
+        <SkillGuideModal api={api} g={g} />
         <LevelUpOverlay api={api} g={g} />
       </div>
 
@@ -206,5 +211,6 @@ function GameScreen({ name, cont, onExit }: { name: string; cont: boolean; onExi
         <EventFeed g={g} />
       </div>
     </div>
+    </ContextMenuProvider>
   );
 }

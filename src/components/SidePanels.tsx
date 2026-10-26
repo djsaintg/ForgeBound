@@ -4,6 +4,8 @@ import type { GameApi } from "../game/useGame";
 import { ITEMS, SELL_RATIO } from "../game/data";
 import { SKILLS, fmt, levelForXp, progressIntoLevel, totalLevel } from "../game/xp";
 import { ItemIcon } from "./ItemIcon";
+import { useContextMenu, useLongPress } from "./ContextMenu";
+import { SLOT_MIME, slotDragProps, useTouchSlotDrag } from "./SlotDrag";
 
 const SLOT_LABEL: Record<ToolSlot, string> = {
   weapon: "Weapon", axe: "Axe", pick: "Pickaxe", rod: "Fishing rod", armor: "Armor",
@@ -13,7 +15,7 @@ export function SidePanels({ api, g }: { api: GameApi; g: GameState }) {
   const [tab, setTab] = useState<"inv" | "skills" | "gear">("inv");
 
   return (
-    <div className="flex h-full min-h-0 flex-col rounded-md border border-[#5c4a2a]/80 bg-[#171310]/95 shadow-[inset_0_0_24px_rgba(0,0,0,0.7)]">
+    <div data-drop="keep" className="flex h-full min-h-0 flex-col rounded-md border border-[#5c4a2a]/80 bg-[#171310]/95 shadow-[inset_0_0_24px_rgba(0,0,0,0.7)]">
       <div className="flex border-b border-[#3a2f1e]">
         {(
           [
@@ -48,7 +50,7 @@ export function SidePanels({ api, g }: { api: GameApi; g: GameState }) {
 
       <div className="chat-scroll min-h-0 flex-1 overflow-y-auto p-2">
         {tab === "inv" && <Inventory api={api} g={g} />}
-        {tab === "skills" && <Skills g={g} />}
+        {tab === "skills" && <Skills api={api} g={g} />}
         {tab === "gear" && <Gear api={api} g={g} />}
       </div>
     </div>
@@ -56,6 +58,7 @@ export function SidePanels({ api, g }: { api: GameApi; g: GameState }) {
 }
 
 function Inventory({ api, g }: { api: GameApi; g: GameState }) {
+  const [over, setOver] = useState<number | null>(null);
   return (
     <div>
       <div className="mb-2 flex items-center justify-between rounded-sm border border-[#3a2f1e] bg-[#0f0b08] px-2 py-1">
@@ -65,40 +68,65 @@ function Inventory({ api, g }: { api: GameApi; g: GameState }) {
           {fmt(g.coins)}
         </span>
       </div>
-      <div className="grid grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1.5">
-        {g.inv.map((slot, i) => (
-          <button
-            key={i}
-            onClick={() => api.clickInventorySlot(i)}
-            onContextMenu={(e) => { e.preventDefault(); api.dropSlot(i); }}
-            title={
-              slot
-                ? `${ITEMS[slot.item].name} — click to use, right-click to drop`
-                : "Empty slot"
-            }
-            className={`group relative flex aspect-square items-center justify-center rounded-sm border transition-all ${
-              slot
-                ? "border-[#4a3a20] bg-gradient-to-b from-[#241c12] to-[#171008] hover:border-[#d8b25c] hover:shadow-[0_0_8px_rgba(216,178,92,0.35)] active:scale-95"
-                : "border-[#2a2115] bg-[#120d08]"
-            }`}
-          >
-            {slot && <ItemIcon item={slot.item} size={30} />}
-            {slot && slot.n > 1 && (
-              <span className="absolute bottom-0 right-0.5 text-[10px] font-bold text-[#f0e0b0] [text-shadow:0_1px_2px_#000]">
-                {slot.n}
-              </span>
-            )}
-          </button>
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(56px,1fr))] gap-1.5" onDragLeave={() => setOver(null)}>
+        {g.inv.map((_, i) => (
+          <InvSlotButton key={i} api={api} g={g} i={i} over={over === i} setOver={setOver} />
         ))}
       </div>
       <p className="mt-2 text-[10.5px] leading-snug text-[#6a5a3a]">
-        Click food to eat it, bones to bury them, tools to wield them. Right-click drops.
+        Click food to eat, bones to bury, gear to wield; anything else is picked up to use on something. Drag to rearrange. Right-click for every option.
       </p>
     </div>
   );
 }
 
-function Skills({ g }: { g: GameState }) {
+function InvSlotButton({ api, g, i, over, setOver }: {
+  api: GameApi; g: GameState; i: number; over: boolean; setOver: (i: number | null) => void;
+}) {
+  const slot = g.inv[i];
+  const openMenu = useContextMenu();
+  const showMenu = (x: number, y: number) => openMenu(x, y, api.slotActions(i));
+  const press = useLongPress(showMenu);
+  const touch = useTouchSlotDrag(api, i, slot?.item);
+  const selected = g.selected === i;
+  return (
+    <button
+      {...slotDragProps(i, !!slot)}
+      onDragOver={(e) => { if (!over && e.dataTransfer.types.includes(SLOT_MIME)) setOver(i); }}
+      onDragEnd={() => setOver(null)}
+      onDrop={() => setOver(null)}
+      onClick={(e) => { if (!press.fired() && !touch.dragged()) api.clickInventorySlot(i, e.shiftKey); }}
+      onContextMenu={(e) => { e.preventDefault(); showMenu(e.clientX, e.clientY); }}
+      onPointerDown={(e) => { press.handlers.onPointerDown(e); touch.handlers.onPointerDown(e); }}
+      onPointerMove={(e) => { press.handlers.onPointerMove(e); touch.handlers.onPointerMove(e); }}
+      onPointerUp={(e) => { press.handlers.onPointerUp(); touch.handlers.onPointerUp(e); }}
+      onPointerCancel={() => { press.handlers.onPointerCancel(); touch.handlers.onPointerCancel(); }}
+      // Occupied slots take the finger for dragging; empty ones still let the panel scroll
+      style={{ touchAction: slot ? "none" : undefined }}
+      title={slot ? `${ITEMS[slot.item].name} — right-click for options` : "Empty slot"}
+      className={`group relative flex aspect-square items-center justify-center rounded-sm border transition-all ${
+        selected
+          ? "border-[#f0c858] bg-gradient-to-b from-[#3a2f14] to-[#241c10] shadow-[0_0_0_1px_#f0c858,0_0_12px_rgba(240,200,88,0.55)]"
+          : over
+          ? "border-[#d8b25c] bg-[#241c12]"
+          : slot
+          ? "border-[#4a3a20] bg-gradient-to-b from-[#241c12] to-[#171008] hover:border-[#d8b25c] hover:shadow-[0_0_8px_rgba(216,178,92,0.35)] active:scale-95"
+          : "border-[#2a2115] bg-[#120d08]"
+      }`}
+    >
+      {slot && <ItemIcon item={slot.item} size={30} />}
+      {slot && slot.n > 1 && (
+        <span className="absolute bottom-0 right-0.5 text-[10px] font-bold text-[#f0e0b0] [text-shadow:0_1px_2px_#000]">
+          {slot.n}
+        </span>
+      )}
+      {touch.ghost}
+    </button>
+  );
+}
+
+function Skills({ api, g }: { api: GameApi; g: GameState }) {
+  const openMenu = useContextMenu();
   return (
     <div>
       <div className="mb-2 flex items-center justify-between rounded-sm border border-[#3a2f1e] bg-[#0f0b08] px-2 py-1">
@@ -110,16 +138,21 @@ function Skills({ g }: { g: GameState }) {
           const lvl = levelForXp(g.xp[s.id]);
           const prog = progressIntoLevel(g.xp[s.id]);
           return (
-            <div
+            <button
               key={s.id}
-              className={`rounded-sm border px-2 py-1.5 transition-colors ${
+              onClick={() => api.openGuide(s.id)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                openMenu(e.clientX, e.clientY, [{ label: "View guide", target: s.name, run: () => api.openGuide(s.id) }]);
+              }}
+              className={`rounded-sm border px-2 py-1.5 text-left transition-colors ${
                 s.impl
-                  ? "border-[#3a2f1e] bg-[#1a140c] hover:border-[#5c4a2a]"
-                  : "border-[#241c12] bg-[#120e09] opacity-45"
+                  ? "border-[#3a2f1e] bg-[#1a140c] hover:border-[#d8b25c]"
+                  : "border-[#241c12] bg-[#120e09] opacity-45 hover:opacity-70"
               }`}
               title={
                 s.impl
-                  ? `${s.name} — ${fmt(g.xp[s.id])} XP total · ${fmt(prog.cur)} / ${fmt(prog.next)} into level`
+                  ? `${s.name} — ${fmt(g.xp[s.id])} XP total · ${fmt(prog.cur)} / ${fmt(prog.next)} into level. Click for the guide.`
                   : "Arriving in a future update"
               }
             >
@@ -146,7 +179,7 @@ function Skills({ g }: { g: GameState }) {
                   />
                 </div>
               )}
-            </div>
+            </button>
           );
         })}
       </div>

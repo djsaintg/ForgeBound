@@ -4,21 +4,32 @@ import type {
   Action,
   ChatKind,
   GameState,
+  GroundItem,
   InvSlot,
   ItemId,
+  MenuOption,
   RecipeId,
   ResKey,
   SkillId,
   StationId,
+  ToolSlot,
 } from "./types";
 import {
+  BURY_XP,
+  FOES,
+  GROUND_ITEM_MS,
+  ITEM_EXAMINE,
   ITEMS,
   MARO_LINES,
   OBJ_TO_RES,
   OBJ_TO_STATION,
   RECIPE_BY_ID,
+  RECIPES,
   RESOURCES,
+  ROKA_LINES,
   SELL_RATIO,
+  STATION_NAMES,
+  SWING_SPEED,
   TOOL_SPEED,
 } from "./data";
 import { COW_SPAWNS, CHICKEN_SPAWNS, GOBLIN_SPAWNS, MAP_H, MAP_W, SPAWN, objAt, walkable } from "./map";
@@ -29,8 +40,17 @@ import { emote, jobOf, strikesDone } from "./anim";
 
 export const SAVE_KEY = "forgebound-save-v1";
 const STEP_MS = 168;
+/** How close (tiles) the hero must be to talk to an NPC. */
+const TALK_RANGE = 2;
 const SAVE_VERSION = 1;
 let uid = 100;
+
+/** Something clickable on a world tile: its actions (default first) and what using an item on it does. */
+interface Thing {
+  name: string;
+  actions: MenuOption[];
+  use: (slot: number) => void;
+}
 const nextId = () => uid++;
 
 function findObjChar(ch: string): { x: number; y: number } | null {
@@ -99,6 +119,9 @@ export function freshState(name: string): GameState {
     zoom: 2.2,
     graphicsMode: "64bit",
     combatXp: { attack: true, strength: true },
+    selected: null,
+    guide: null,
+    pendingTake: null,
   };
 }
 
@@ -150,7 +173,8 @@ export function loadGame(): GameState | null {
     g.counters = p.counters ?? { gathered: 0, made: 0, kills: 0 };
     if (typeof p.zoom === "number") g.zoom = p.zoom;
     if (p.graphicsMode) g.graphicsMode = p.graphicsMode;
-    if (Array.isArray(p.groundItems)) g.groundItems = p.groundItems;
+    // Saved timestamps belong to the last session's clock, so loaded items get a fresh two minutes
+    if (Array.isArray(p.groundItems)) g.groundItems = p.groundItems.map((gi: GroundItem) => ({ ...gi, t: performance.now() }));
     // Older saves have no choice stored; a broken one with both off trains both
     const cx = p.combatXp ?? {};
     g.combatXp = { attack: cx.attack !== false, strength: cx.strength !== false };
@@ -272,14 +296,35 @@ export function useGame() {
   };
 
   /** Melee swing-speed multiplier by weapon tier — bare hands are slowest. */
-  const swingMul = (tier: number): number => [1.5, 1, 0.9, 0.8, 0.7][tier] ?? 1;
+  const swingMul = (tier: number): number => SWING_SPEED[tier] ?? 1;
+
+  /** Whether the hero's level is high enough to wield or wear an item. */
+  const canWield = (id: ItemId): boolean => {
+    const w = ITEMS[id].wield;
+    return !w || levelForXp(g().xp[w.skill]) >= w.level;
+  };
+  const wieldError = (id: ItemId) => {
+    const w = ITEMS[id].wield!;
+    chat("err", `You need level ${w.level} ${SKILL_BY_ID[w.skill].name} to wield the ${ITEMS[id].name.toLowerCase()}.`);
+    sfx.error();
+  };
 
   const ensureTool = (tool?: "axe" | "pick" | "rod"): boolean => {
     if (!tool) return true;
     const gg = g();
     if (gg.equipped[tool]) return true;
-    const idx = gg.inv.findIndex((s) => s && ITEMS[s.item]?.cat === tool);
+    // Take the best one from the pack that the hero can actually wield
+    let idx = -1;
+    gg.inv.forEach((s, i) => {
+      if (!s || ITEMS[s.item]?.cat !== tool || !canWield(s.item)) return;
+      if (idx === -1 || (ITEMS[s.item].tier ?? 0) > (ITEMS[gg.inv[idx]!.item].tier ?? 0)) idx = i;
+    });
     if (idx === -1) {
+      const tooHigh = gg.inv.find((s) => s && ITEMS[s.item]?.cat === tool);
+      if (tooHigh) {
+        wieldError(tooHigh.item);
+        return false;
+      }
       const names: Record<string, string> = { axe: "an axe", pick: "a pickaxe", rod: "a fly fishing rod" };
       chat("err", `Requires ${names[tool]} — Roka the trader sells them in Vale Square.`);
       sfx.error();
@@ -296,169 +341,362 @@ export function useGame() {
     const gg = g();
     gg.action = null;
     gg.pendingStation = null;
+    gg.pendingTake = null;
   };
 
-  const handleWorldClick = (x: number, y: number): "handled" | "walk" => {
+  const closeWindows = () => {
     const gg = g();
     gg.bankOpen = false;
     gg.shopOpen = false;
     gg.stationUI = null;
+    gg.guide = null;
+  };
+
+  /** Walk over and open the bank, shop or a station's recipe list. */
+  const openAt = (kind: "bank" | "shop" | "craft", x: number, y: number, station?: StationId) => {
+    const gg = g();
+    if (adjacentTo(gg.x, gg.y, x, y)) {
+      if (kind === "bank") gg.bankOpen = true;
+      else if (kind === "shop") gg.shopOpen = true;
+      else if (station) gg.stationUI = { station, x, y };
+      sfx.click();
+    } else {
+      gg.path = findPath(gg.x, gg.y, x, y) ?? [];
+      gg.pendingStation = { kind, station, x, y };
+    }
+  };
+
+  /** What to say once the hero reaches the NPC they set off to talk to. */
+  const pendingSay = useRef<(() => void) | null>(null);
+
+  /**
+   * Speak with (or hand something to) the NPC at x,y. Within TALK_RANGE tiles
+   * it happens at once; further away the hero walks over first.
+   */
+  const speakTo = (x: number, y: number, say: () => void) => {
+    const gg = g();
+    if (Math.max(Math.abs(gg.x - x), Math.abs(gg.y - y)) <= TALK_RANGE) {
+      say();
+      return;
+    }
+    const p = findPath(gg.x, gg.y, x, y);
+    if (!p) {
+      chat("err", "You can't reach them from here.");
+      sfx.error();
+      return;
+    }
+    closeWindows();
     cancelAction();
+    gg.path = p;
+    gg.pendingStation = { kind: "talk", x, y };
+    pendingSay.current = say;
+  };
 
-    // 1. Check if user clicked on a Ground Loot Item (Egg, Bones, Sword, Feathers, Gold!)
-    const gItemIdx = (gg.groundItems || []).findIndex(
-      (gi) => Math.round(gi.x) === x && Math.round(gi.y) === y
+  const pickUp = (id: number) => {
+    const gg = g();
+    const idx = gg.groundItems.findIndex((gi) => gi.id === id);
+    if (idx === -1) return;
+    const gItem = gg.groundItems[idx];
+    if (gItem.item !== "coins" && freeSlots(gg) < 1 && !ITEMS[gItem.item]?.stackable) {
+      chat("err", "Your backpack is full, cannot pick up loot!");
+      sfx.error();
+      return;
+    }
+    const added = addItem(gItem.item, gItem.n);
+    if (added > 0) {
+      gg.groundItems.splice(idx, 1);
+      sfx.coin();
+      const itemName = ITEMS[gItem.item]?.name.toLowerCase() || gItem.item;
+      chat("info", `${gg.name} picked up ${gItem.n > 1 ? gItem.n + "× " : ""}${itemName} from the ground.`);
+    }
+  };
+
+  /** Pick up a ground item, walking over first if it's out of reach. */
+  const take = (id: number) => {
+    const gg = g();
+    const gi = gg.groundItems.find((q) => q.id === id);
+    if (!gi) return;
+    if (adjacentTo(gg.x, gg.y, gi.x, gi.y)) {
+      pickUp(id);
+      return;
+    }
+    const p = findPath(gg.x, gg.y, gi.x, gi.y);
+    if (!p) {
+      chat("err", "You can't reach that spot.");
+      sfx.error();
+      return;
+    }
+    gg.path = p;
+    gg.pendingTake = id;
+  };
+
+  type FoeKind = "cow" | "chicken" | "goblin";
+  type Foe = { id: number; x: number; y: number; hp: number; maxHp: number; moo?: number; cluck?: number; grunt?: number };
+
+  const foeInfo = (kind: FoeKind, f: Foe) =>
+    FOES[kind === "goblin" && f.maxHp >= FOES.brigand.hp ? "brigand" : kind];
+
+  const attack = (kind: FoeKind, f: Foe) => {
+    const gg = g();
+    if (f.hp <= 0) return;
+    const p = findPath(gg.x, gg.y, Math.round(f.x), Math.round(f.y), true);
+    if (p) gg.path = p;
+    const base = kind === "cow" ? 1800 : kind === "chicken" ? 1600 : 2000;
+    gg.action = { kind: "combat", targetKind: kind, targetId: f.id, progress: 0, cycle: Math.round(base * swingMul(toolTier("weapon"))) };
+    if (kind === "cow") {
+      f.moo = performance.now() + 1000;
+      sfx.moo();
+      chat("info", `${gg.name} raises their weapon and attacks the pasture cow! Moo!`);
+    } else if (kind === "chicken") {
+      f.cluck = performance.now() + 1000;
+      sfx.click();
+      chat("info", `${gg.name} attacks the coop hen! "Cluck cluck!" 🐔`);
+    } else {
+      f.grunt = performance.now() + 1200;
+      sfx.swing();
+      const taunts = [
+        `Goblin Warrior grunts fiercely! "Human dare challenge N.E. clan?!"`,
+        `Goblin Warrior raises spiked club! "You pay shiny gold for trespassing!"`,
+      ];
+      chat("npc", taunts[Math.floor(Math.random() * taunts.length)]);
+      chat("info", `${gg.name} charges into combat against the ${foeInfo(kind, f).name}!`);
+    }
+  };
+
+  const nothing = () => chat("info", "Nothing interesting happens.");
+
+  /** Start a recipe at a station tile, walking over first if needed. */
+  const beginRecipe = (id: RecipeId, x: number, y: number): boolean => {
+    const gg = g();
+    const r = RECIPE_BY_ID[id];
+    if (levelForXp(gg.xp[r.skill]) < r.level) {
+      chat("err", `Requires level ${r.level} ${SKILL_BY_ID[r.skill].name}.`);
+      sfx.error();
+      return false;
+    }
+    for (const [reqId, reqN] of Object.entries(r.inputs)) {
+      if (countItem(reqId as ItemId) < (reqN ?? 0)) {
+        chat("err", `Requires ${reqN}× ${ITEMS[reqId as ItemId]?.name ?? reqId}.`);
+        sfx.error();
+        return false;
+      }
+    }
+    if (!adjacentTo(gg.x, gg.y, x, y)) gg.path = findPath(gg.x, gg.y, x, y) ?? [];
+    gg.action = { kind: "station", x, y, recipe: id, progress: 0, cycle: r.cycle };
+    sfx.click();
+    return true;
+  };
+
+  /** Ore on the furnace, a bar on the anvil, raw food on the fire. */
+  const useOnStation = (slot: number, station: StationId, x: number, y: number) => {
+    const gg = g();
+    const s = gg.inv[slot];
+    if (!s) return;
+    const cands = RECIPES.filter((r) => r.station === station && r.inputs[s.item]);
+    if (!cands.length) return nothing();
+    const doable = cands.filter(
+      (r) => levelForXp(gg.xp[r.skill]) >= r.level &&
+        Object.entries(r.inputs).every(([id, n]) => countItem(id as ItemId) >= (n ?? 0))
     );
-    if (gItemIdx !== -1) {
-      const gItem = gg.groundItems[gItemIdx];
-      if (!adjacentTo(gg.x, gg.y, x, y)) {
-        const p = findPath(gg.x, gg.y, x, y);
-        if (p) {
-          gg.path = p;
-          chat("info", `Walking over to pick up ${ITEMS[gItem.item]?.name || gItem.item}...`);
-        }
-      } else {
-        // Pick it up immediately!
-        if (gItem.item !== "coins" && freeSlots(gg) < 1 && !ITEMS[gItem.item]?.stackable) {
-          chat("err", "Your backpack is full, cannot pick up loot!");
-          sfx.error();
-          return "handled";
-        }
-        const added = addItem(gItem.item, gItem.n);
-        if (added > 0) {
-          gg.groundItems.splice(gItemIdx, 1);
-          sfx.coin();
-          const itemName = ITEMS[gItem.item]?.name.toLowerCase() || gItem.item;
-          chat("info", `${gg.name} picked up ${gItem.n > 1 ? gItem.n + "× " : ""}${itemName} from the ground.`);
-        }
-      }
-      return "handled";
+    // One clear choice starts straight away; several open the recipe list
+    if (doable.length === 1) beginRecipe(doable[0].id, x, y);
+    else if (doable.length > 1) openAt("craft", x, y, station);
+    else beginRecipe(cands[0].id, x, y); // reports what's missing
+  };
+
+  const RES_VERB: Record<ResKey, string> = {
+    tree: "Chop down", oak: "Chop down",
+    copper: "Mine", tin: "Mine", iron: "Mine", coal: "Mine", gold: "Mine",
+    shrimp: "Net", trout: "Lure",
+  };
+  const RES_ABOUT: Record<ResKey, string> = {
+    tree: "A common valley tree.",
+    oak: "A broad old oak. Its logs are heavy and slow to cut.",
+    copper: "Rocks veined with reddish copper.",
+    tin: "Rocks flecked with grey tin.",
+    iron: "Dark rocks heavy with iron.",
+    coal: "A seam of black coal.",
+    gold: "Rocks glinting with gold.",
+    shrimp: "Shrimp dart about in the shallows.",
+    trout: "Trout rise in the fast water. They'll take a feathered fly.",
+  };
+  const STATION_VERB: Record<StationId, string> = { furnace: "Smelt", anvil: "Smith", fire: "Cook" };
+  const STATION_ABOUT: Record<StationId, string> = {
+    furnace: "A roaring furnace. Smelt ore into bars here.",
+    anvil: "A heavy anvil. Hammer bars into weapons and armour.",
+    fire: "A crackling campfire. Cook raw food over it.",
+  };
+  const SCENERY: Record<string, [string, string]> = {
+    H: ["Goblin tent", "A rustic hide goblin tent adorned with boar tusks and tribal pennants."],
+    V: ["Goblin banner", "A tribal bone banner displaying the crest of the North-East Goblin Clan."],
+    c: ["Hen house", "A wooden chicken hen house full of roosting feathers and straw."],
+    h: ["Hay bale", "A golden hay bale stacked in the farm coop."],
+  };
+
+  /** Everything clickable on a tile, topmost first, each with its actions (default first). */
+  const thingsAt = (x: number, y: number): Thing[] => {
+    const gg = g();
+    const out: Thing[] = [];
+    const inspect = (text: string): MenuOption => ({ label: "Inspect", run: () => chat("info", text) });
+
+    for (const gi of gg.groundItems ?? []) {
+      if (Math.round(gi.x) !== x || Math.round(gi.y) !== y) continue;
+      const name = `${ITEMS[gi.item]?.name ?? gi.item}${gi.n > 1 ? ` (${gi.n})` : ""}`;
+      out.push({
+        name,
+        actions: [
+          { label: "Take", target: name, run: () => take(gi.id) },
+          { label: "Inspect", target: name, run: () => chat("info", `${name}: ${ITEM_EXAMINE[gi.item]}`) },
+        ],
+        use: nothing,
+      });
     }
 
-    // 2. Cows Check & Combat Initiation
-    for (const c of gg.cows) {
-      if (Math.round(c.x) === x && Math.round(c.y) === y) {
-        if (c.hp <= 0) {
-          chat("info", "The defeated cow is waiting for respawn...");
-          return "handled";
-        }
-        c.moo = performance.now() + 1000;
-        sfx.moo();
-        const p = findPath(gg.x, gg.y, x, y, true);
-        if (p) gg.path = p;
-        gg.action = { kind: "combat", targetKind: "cow", targetId: c.id, progress: 0, cycle: Math.round(1800 * swingMul(toolTier("weapon"))) };
-        chat("info", `${gg.name} raises their weapon and attacks the pasture cow! Moo!`);
-        return "handled";
-      }
-    }
-
-    // 3. Chickens Check & Combat Initiation (S.E. Coop)
-    if (gg.chickens) {
-      for (const ch of gg.chickens) {
-        if (Math.round(ch.x) === x && Math.round(ch.y) === y) {
-          if (ch.hp <= 0) {
-            chat("info", "The coop hen is regenerating...");
-            return "handled";
-          }
-          ch.cluck = performance.now() + 1000;
-          sfx.click();
-          const p = findPath(gg.x, gg.y, x, y, true);
-          if (p) gg.path = p;
-          gg.action = { kind: "combat", targetKind: "chicken", targetId: ch.id, progress: 0, cycle: Math.round(1600 * swingMul(toolTier("weapon"))) };
-          chat("info", `${gg.name} attacks the coop hen! "Cluck cluck!" 🐔`);
-          return "handled";
-        }
-      }
-    }
-
-    // 4. Goblins Check & Combat Initiation (N.E. Village)
-    if (gg.goblins) {
-      for (const gb of gg.goblins) {
-        if (Math.round(gb.x) === x && Math.round(gb.y) === y) {
-          if (gb.hp <= 0) {
-            chat("info", "The fallen goblin warrior is regenerating at camp...");
-            return "handled";
-          }
-          gb.grunt = performance.now() + 1200;
-          sfx.swing();
-          const p = findPath(gg.x, gg.y, x, y, true);
-          if (p) gg.path = p;
-          gg.action = { kind: "combat", targetKind: "goblin", targetId: gb.id, progress: 0, cycle: Math.round(2000 * swingMul(toolTier("weapon"))) };
-          const taunts = [
-            `Goblin Warrior grunts fiercely! "Human dare challenge N.E. clan?!"`,
-            `Goblin Warrior raises spiked club! "You pay shiny gold for trespassing!"`,
-          ];
-          chat("npc", taunts[Math.floor(Math.random() * taunts.length)]);
-          chat("info", `${gg.name} charges into combat against the Goblin Warrior!`);
-          return "handled";
-        }
+    const foes: [FoeKind, Foe[]][] = [["cow", gg.cows], ["chicken", gg.chickens ?? []], ["goblin", gg.goblins ?? []]];
+    for (const [kind, list] of foes) {
+      for (const f of list) {
+        if (f.hp <= 0 || Math.round(f.x) !== x || Math.round(f.y) !== y) continue;
+        const info = foeInfo(kind, f);
+        const name = `${info.name} (level ${info.level})`;
+        out.push({
+          name,
+          actions: [
+            { label: "Attack", target: name, run: () => attack(kind, f) },
+            { ...inspect(`${info.name} · level ${info.level} · HP ${Math.ceil(f.hp)}/${f.maxHp}. ${info.about}`), target: name },
+          ],
+          use: nothing,
+        });
       }
     }
 
     const ch = objAt(x, y);
-    if (ch === "H") {
-      chat("info", "A rustic hide goblin tent adorned with boar tusks and tribal pennants.");
-      sfx.click();
-      return "handled";
-    }
-    if (ch === "V") {
-      chat("info", "A tribal bone banner displaying the crest of the North-East Goblin Clan.");
-      sfx.click();
-      return "handled";
-    }
-    if (ch === "c" || ch === "h") {
-      chat("info", ch === "c" ? "A wooden chicken hen house full of roosting feathers and straw." : "A golden hay bale stacked in the farm coop.");
-      sfx.click();
-      return "handled";
-    }
-
-    if (ch === "M" || ch === "P") {
-      const go = () => {
-        gg.path = findPath(gg.x, gg.y, x, y) ?? [];
-        gg.pendingStation = { kind: ch === "M" ? "shop" : "shop", x, y };
-      };
-      if (ch === "P") {
-        const idx = Math.floor(cowSeed.current++) % MARO_LINES.length;
-        chat("npc", `Old Maro: ${MARO_LINES[idx]}`);
-        sfx.click();
-        return "handled";
-      }
-      if (adjacentTo(gg.x, gg.y, x, y)) {
-        gg.shopOpen = true;
-        sfx.click();
-      } else go();
-      return "handled";
-    }
-
-    if (ch === "B") {
-      if (adjacentTo(gg.x, gg.y, x, y)) {
-        gg.bankOpen = true;
-        sfx.click();
-      } else {
-        gg.path = findPath(gg.x, gg.y, x, y) ?? [];
-        gg.pendingStation = { kind: "bank", x, y };
-      }
-      return "handled";
-    }
-
-    const station = OBJ_TO_STATION[ch];
-    if (station && station !== "bank") {
-      if (adjacentTo(gg.x, gg.y, x, y)) {
-        gg.stationUI = { station: station as StationId, x, y };
-        sfx.click();
-      } else {
-        gg.path = findPath(gg.x, gg.y, x, y) ?? [];
-        gg.pendingStation = { kind: "craft", station: station as StationId, x, y };
-      }
-      return "handled";
-    }
-
     const res = OBJ_TO_RES[ch];
-    if (res) {
-      startGather(x, y, res);
-      return "handled";
+    const station = OBJ_TO_STATION[ch];
+    if (ch === "M") {
+      out.push({
+        name: "Roka",
+        actions: [
+          { label: "Trade", target: "Roka", run: () => openAt("shop", x, y) },
+          {
+            label: "Talk to", target: "Roka",
+            run: () => speakTo(x, y, () => { chat("npc", ROKA_LINES[Math.floor(Math.random() * ROKA_LINES.length)]); sfx.click(); }),
+          },
+          { ...inspect("Roka, the valley trader. Buys and sells tools, gear and goods."), target: "Roka" },
+        ],
+        use: (slot) => {
+          const s = gg.inv[slot];
+          if (!s) return;
+          const each = Math.max(1, Math.floor(ITEMS[s.item].price * SELL_RATIO));
+          speakTo(x, y, () => chat("npc", `Roka: I'd give you ${each} coin${each > 1 ? "s" : ""} for ${s.n > 1 ? "each of those" : "that"}. Trade with me if you want to sell.`));
+        },
+      });
+    } else if (ch === "P") {
+      out.push({
+        name: "Old Maro",
+        actions: [
+          {
+            label: "Talk to", target: "Old Maro",
+            run: () => speakTo(x, y, () => {
+              const idx = Math.floor(cowSeed.current++) % MARO_LINES.length;
+              chat("npc", `Old Maro: ${MARO_LINES[idx]}`);
+              sfx.click();
+            }),
+          },
+          { ...inspect("Old Maro, the valley's guide, full of good advice."), target: "Old Maro" },
+        ],
+        use: (slot) => {
+          const s = gg.inv[slot];
+          if (s) speakTo(x, y, () => chat("npc", `Old Maro: ${ITEMS[s.item].name}? Hold on to it, young one. You'll find a use for it.`));
+        },
+      });
+    } else if (ch === "B") {
+      out.push({
+        name: "Bank booth",
+        actions: [
+          { label: "Bank", target: "Bank booth", run: () => openAt("bank", x, y) },
+          { ...inspect("The Bank of ForgeBound. Your belongings are safe here."), target: "Bank booth" },
+        ],
+        use: (slot) => (adjacentTo(gg.x, gg.y, x, y) ? depositSlot(slot) : openAt("bank", x, y)),
+      });
+    } else if (station && station !== "bank") {
+      const name = STATION_NAMES[station];
+      out.push({
+        name,
+        actions: [
+          { label: STATION_VERB[station], target: name, run: () => openAt("craft", x, y, station) },
+          { ...inspect(`${name}: ${STATION_ABOUT[station]}`), target: name },
+        ],
+        use: (slot) => useOnStation(slot, station, x, y),
+      });
+    } else if (res) {
+      const def = RESOURCES[res];
+      const lvl = levelForXp(gg.xp[def.skill]);
+      const need = `Needs level ${def.level} ${SKILL_BY_ID[def.skill].name}${lvl < def.level ? ` (you have ${lvl})` : ""}.`;
+      const spent = (gg.depleted[`${x},${y}`] ?? 0) > performance.now() ? " It's spent for now." : "";
+      out.push({
+        name: def.name,
+        actions: [
+          { label: RES_VERB[res], target: def.name, run: () => startGather(x, y, res) },
+          { ...inspect(`${def.name}: ${RES_ABOUT[res]}${spent} ${need}`), target: def.name },
+        ],
+        use: nothing,
+      });
+    } else if (SCENERY[ch]) {
+      const [name, text] = SCENERY[ch];
+      out.push({
+        name,
+        actions: [{ label: "Inspect", target: name, run: () => { chat("info", text); sfx.click(); } }],
+        use: nothing,
+      });
     }
-    return "walk";
+    return out;
+  };
+
+  /**
+   * The right-click menu for a world tile. Its first entry is what left-click
+   * does, so the two can never disagree. With an item selected, the menu
+   * offers to use it on each thing there instead.
+   */
+  const worldActions = (x: number, y: number): MenuOption[] => {
+    const gg = g();
+    const things = thingsAt(x, y);
+    // Talk and Inspect leave the current job running; everything else replaces it
+    const keep = (o: MenuOption) => o.label === "Inspect" || o.label === "Talk to";
+    const wrap = (o: MenuOption): MenuOption => ({
+      ...o,
+      run: () => {
+        if (!keep(o)) {
+          closeWindows();
+          cancelAction();
+        }
+        o.run();
+      },
+    });
+    const walk: MenuOption = { label: "Walk here", run: () => clickGround(x, y) };
+    const sel = gg.selected !== null ? gg.inv[gg.selected] : null;
+    if (sel) {
+      const slot = gg.selected!;
+      const item = ITEMS[sel.item].name;
+      return [
+        ...things.map((t) => wrap({
+          label: "Use", target: `${item} → ${t.name}`,
+          run: () => { gg.selected = null; t.use(slot); },
+        })),
+        { label: "Cancel", target: item, run: () => { gg.selected = null; } },
+        walk,
+      ];
+    }
+    return [...things.flatMap((t) => t.actions).map(wrap), walk];
+  };
+
+  const handleWorldClick = (x: number, y: number) => {
+    const gg = g();
+    // An item in hand: use it on whatever is here, or put it away on empty ground
+    if (gg.selected !== null && thingsAt(x, y).length === 0) {
+      gg.selected = null;
+      return;
+    }
+    worldActions(x, y)[0].run();
   };
 
   const startGather = (x: number, y: number, res: ResKey) => {
@@ -565,29 +803,8 @@ export function useGame() {
 
   const startRecipe = (id: RecipeId) => {
     const gg = g();
-    const r = RECIPE_BY_ID[id];
     if (!gg.stationUI) return;
-    if (levelForXp(gg.xp[r.skill]) < r.level) {
-      chat("err", `Requires level ${r.level} ${SKILL_BY_ID[r.skill].name}.`);
-      sfx.error();
-      return;
-    }
-    for (const [reqId, reqN] of Object.entries(r.inputs)) {
-      if (countItem(reqId as ItemId) < (reqN ?? 0)) {
-        chat("err", `Requires ${reqN}× ${ITEMS[reqId as ItemId]?.name ?? reqId}.`);
-        sfx.error();
-        return;
-      }
-    }
-    gg.action = {
-      kind: "station",
-      x: gg.stationUI.x,
-      y: gg.stationUI.y,
-      recipe: id,
-      progress: 0,
-      cycle: r.cycle,
-    };
-    sfx.click();
+    beginRecipe(id, gg.stationUI.x, gg.stationUI.y);
     bump();
   };
 
@@ -758,9 +975,7 @@ export function useGame() {
   const clickGround = (x: number, y: number) => {
     const gg = g();
     cancelAction();
-    gg.bankOpen = false;
-    gg.shopOpen = false;
-    gg.stationUI = null;
+    closeWindows();
     const path = findPath(gg.x, gg.y, x, y);
     if (path) {
       gg.path = path;
@@ -771,8 +986,8 @@ export function useGame() {
   const update = (dt: number, now: number) => {
     const gg = g();
     if (!gg.groundItems) gg.groundItems = [];
-    // Laid eggs spoil after two minutes on the ground
-    gg.groundItems = gg.groundItems.filter((gi) => gi.item !== "egg" || now - gi.t < 120000);
+    // Whatever is left lying around (drops, loot, eggs) despawns after two minutes
+    gg.groundItems = gg.groundItems.filter((gi) => now - gi.t < GROUND_ITEM_MS);
 
     // movement
     if (gg.path.length) {
@@ -791,8 +1006,17 @@ export function useGame() {
         if (p.kind === "bank") gg.bankOpen = true;
         else if (p.kind === "shop") gg.shopOpen = true;
         else if (p.kind === "craft" && p.station) gg.stationUI = { station: p.station, x: p.x, y: p.y };
-        sfx.click();
+        if (p.kind === "talk") {
+          pendingSay.current?.();
+          pendingSay.current = null;
+        } else sfx.click();
         gg.pendingStation = null;
+      }
+      if (gg.pendingTake !== null) {
+        const id = gg.pendingTake;
+        gg.pendingTake = null;
+        const gi = gg.groundItems.find((q) => q.id === id);
+        if (gi && adjacentTo(gg.x, gg.y, gi.x, gi.y)) pickUp(id);
       }
     }
 
@@ -923,37 +1147,45 @@ export function useGame() {
       }
     }
 
+    // A held item that got used up or moved away is put down
+    if (gg.selected !== null && !gg.inv[gg.selected]) gg.selected = null;
+
     // cleanup expired text / events
     gg.floats = gg.floats.filter((f) => now - f.t < 1400);
     gg.xpEvents = gg.xpEvents.filter((e) => now - e.t < 2000);
   };
 
-  const clickInventorySlot = (idx: number) => {
+  type Primary = "Eat" | "Bury" | "Wield" | "Wear";
+  /** What left-click does to an item without a selection; null means select it. */
+  const primaryOf = (item: ItemId): Primary | null => {
+    const cat = ITEMS[item].cat;
+    if (cat === "food") return "Eat";
+    if (cat === "bone") return "Bury";
+    if (cat === "armor") return "Wear";
+    if (cat === "axe" || cat === "pick" || cat === "rod" || cat === "weapon") return "Wield";
+    return null;
+  };
+
+  /** Eat, bury or equip the item in a slot. */
+  const applySlot = (idx: number) => {
     const gg = g();
     const s = gg.inv[idx];
     if (!s) return;
     const def = ITEMS[s.item];
-    
-    // 1. Bury Bones for Prayer XP!
-    if (def.cat === "bone" || s.item === "bones") {
+    gg.selected = null;
+
+    if (def.cat === "bone") {
       gg.inv[idx] = s.n > 1 ? { item: s.item, n: s.n - 1 } : null;
-      gainXp("prayer", 25);
+      gainXp("prayer", BURY_XP);
       sfx.bury();
       emote.buryAt = performance.now();
-      chat("sys", `${gg.name} buried the bones in reverent prayer · +25 Prayer XP`);
-      bump();
-      return;
-    }
-
-    // 2. Equip Weapon, Armor, Axe, Pick, or Rod!
-    if (def.cat === "axe" || def.cat === "pick" || def.cat === "rod" || def.cat === "weapon" || def.cat === "armor") {
-      const slot: "weapon" | "axe" | "pick" | "rod" | "armor" = def.cat === "weapon" ? "weapon" : (def.cat === "armor" ? "armor" : def.cat);
+      chat("sys", `${gg.name} buried the bones in reverent prayer · +${BURY_XP} Prayer XP`);
+    } else if (def.cat === "axe" || def.cat === "pick" || def.cat === "rod" || def.cat === "weapon" || def.cat === "armor") {
+      if (!canWield(s.item)) return wieldError(s.item);
+      const slot: ToolSlot = def.cat;
+      // The old piece takes the new one's place in the backpack
       const prev = gg.equipped[slot];
-      gg.inv[idx] = null;
-      if (prev) {
-        const free = gg.inv.findIndex((q) => q === null);
-        if (free !== -1) gg.inv[free] = { item: prev, n: 1 };
-      }
+      gg.inv[idx] = prev ? { item: prev, n: 1 } : null;
       gg.equipped[slot] = s.item;
       chat("info", `${gg.name} donned the ${def.name.toLowerCase()}.`);
       sfx.click();
@@ -963,16 +1195,102 @@ export function useGame() {
       gg.hp = Math.min(gg.maxHp, gg.hp + healAmount);
       chat("info", `${gg.name} heartily ate ${art(def.name)} ${def.name.toLowerCase()} · +${healAmount} HP`);
       sfx.gather();
-    } else {
-      chat("info", `${def.name} — sells to Roka for ${Math.max(1, Math.floor(def.price * SELL_RATIO))} coins. Left-click campfire to cook raw meats/eggs.`);
     }
     bump();
+  };
+
+  /** Pick an item up to use on something; picking the same one again puts it back. */
+  const selectSlot = (idx: number) => {
+    const gg = g();
+    if (!gg.inv[idx]) return;
+    gg.selected = gg.selected === idx ? null : idx;
+    sfx.click();
+    bump();
+  };
+
+  const useOnSlot = (from: number, to: number) => {
+    const gg = g();
+    const a = gg.inv[from], b = gg.inv[to];
+    gg.selected = null;
+    if (a && b && from !== to) {
+      const pair = new Set([a.item, b.item]);
+      if (pair.has("feathers") && (pair.has("logs") || pair.has("oak_logs"))) {
+        chat("info", "You turn the feathers over against the logs… Fletching is still being forged.");
+      } else nothing();
+    }
+    bump();
+  };
+
+  const inspectSlot = (idx: number) => {
+    const s = g().inv[idx];
+    if (!s) return;
+    const def = ITEMS[s.item];
+    const value = Math.max(1, Math.floor(def.price * SELL_RATIO));
+    const heal = def.heal ? ` Heals ${def.heal} HP.` : "";
+    const need = def.wield ? ` Needs level ${def.wield.level} ${SKILL_BY_ID[def.wield.skill].name} to wield.` : "";
+    chat("info", `${def.name}: ${ITEM_EXAMINE[s.item]}${heal}${need} Roka pays ${value} coin${value > 1 ? "s" : ""}${s.n > 1 ? " each" : ""}.`);
+    bump();
+  };
+
+  /** Left-click on a backpack slot: shift drops, a held item is used on it, otherwise the default action. */
+  const clickInventorySlot = (idx: number, shift = false) => {
+    const gg = g();
+    const s = gg.inv[idx];
+    if (shift && s) return dropSlot(idx);
+    if (gg.selected !== null) {
+      if (gg.selected === idx || !s) selectSlot(gg.selected);
+      else useOnSlot(gg.selected, idx);
+      return;
+    }
+    if (!s) return;
+    if (primaryOf(s.item)) applySlot(idx);
+    else selectSlot(idx);
+  };
+
+  /** Drag-and-drop: move an item to another slot, swapping with what's there. */
+  const moveSlot = (from: number, to: number) => {
+    const gg = g();
+    if (from === to || !gg.inv[from]) return;
+    [gg.inv[from], gg.inv[to]] = [gg.inv[to], gg.inv[from]];
+    if (gg.selected === from) gg.selected = to;
+    else if (gg.selected === to) gg.selected = from;
+    bump();
+  };
+
+  /** The right-click menu for a backpack slot; the first entry matches left-click. */
+  const slotActions = (idx: number): MenuOption[] => {
+    const gg = g();
+    const s = gg.inv[idx];
+    if (!s) return [];
+    const name = ITEMS[s.item].name;
+    const sel = gg.selected !== null && gg.selected !== idx ? gg.inv[gg.selected] : null;
+    if (sel) {
+      const from = gg.selected!;
+      return [
+        { label: "Use", target: `${ITEMS[sel.item].name} → ${name}`, run: () => useOnSlot(from, idx) },
+        { label: "Cancel", target: ITEMS[sel.item].name, run: () => { gg.selected = null; bump(); } },
+      ];
+    }
+    const opts: MenuOption[] = [];
+    // With the bank or shop open, the backpack deposits or sells first
+    if (gg.bankOpen) opts.push({ label: "Deposit", target: name, run: () => depositSlot(idx) });
+    if (gg.shopOpen) opts.push({ label: "Sell", target: name, run: () => sellSlot(idx) });
+    const primary = primaryOf(s.item);
+    const use: MenuOption = { label: "Use", target: name, run: () => selectSlot(idx) };
+    if (primary) opts.push({ label: primary, target: name, run: () => applySlot(idx) }, use);
+    else opts.push(use);
+    opts.push(
+      { label: "Drop", target: name, run: () => dropSlot(idx) },
+      { label: "Inspect", target: name, run: () => inspectSlot(idx) },
+    );
+    return opts;
   };
 
   const dropSlot = (idx: number) => {
     const gg = g();
     const s = gg.inv[idx];
     if (!s || s.item === "coins") return;
+    gg.selected = null;
     gg.inv[idx] = null;
     if (!gg.groundItems) gg.groundItems = [];
     gg.groundItems.push({ id: nextId(), item: s.item, n: s.n, x: Math.round(gg.x), y: Math.round(gg.y), t: performance.now() });
@@ -985,6 +1303,7 @@ export function useGame() {
     const s = gg.inv[idx];
     if (!s || s.item === "coins") return;
     gg.bank[s.item] = (gg.bank[s.item] ?? 0) + s.n;
+    gg.selected = null;
     gg.inv[idx] = null;
     for (const slot of ["weapon", "axe", "pick", "rod", "armor"] as const) {
       if (gg.equipped[slot] === s.item) delete gg.equipped[slot];
@@ -996,6 +1315,7 @@ export function useGame() {
 
   const depositAll = () => {
     const gg = g();
+    gg.selected = null;
     let moved = 0;
     for (let i = 0; i < gg.inv.length; i++) {
       const s = gg.inv[i];
@@ -1083,6 +1403,7 @@ export function useGame() {
     if (!s || s.item === "coins") return;
     const def = ITEMS[s.item];
     const gain = Math.max(1, Math.floor(def.price * SELL_RATIO)) * s.n;
+    gg.selected = null;
     gg.inv[idx] = null;
     for (const slot of ["weapon", "axe", "pick", "rod", "armor"] as const) {
       if (gg.equipped[slot] === s.item) delete gg.equipped[slot];
@@ -1131,21 +1452,28 @@ export function useGame() {
     bump();
   };
 
+  /** Escape / ✕: close every window and put down a held item. */
   const closeOverlays = () => {
     const gg = g();
-    gg.bankOpen = false;
-    gg.shopOpen = false;
-    gg.stationUI = null;
+    closeWindows();
     gg.settingsOpen = false;
+    gg.selected = null;
     bump();
   };
 
   const openSettings = () => {
     const gg = g();
-    gg.bankOpen = false;
-    gg.shopOpen = false;
-    gg.stationUI = null;
+    closeWindows();
     gg.settingsOpen = true;
+    sfx.click();
+    bump();
+  };
+
+  const openGuide = (skill: SkillId) => {
+    const gg = g();
+    closeWindows();
+    gg.settingsOpen = false;
+    gg.guide = skill;
     sfx.click();
     bump();
   };
@@ -1157,7 +1485,7 @@ export function useGame() {
     return saveGame(gg);
   };
 
-  const art = (name: string) => (/^aeiou/i.test(name) ? "an" : "a");
+  const art = (name: string) => (/^[aeiou]/i.test(name) ? "an" : "a");
 
   // --- Gamma v0.3.0 Visual Controls ---
   const setZoom = (zoom: number) => {
@@ -1183,7 +1511,7 @@ export function useGame() {
     gg.chat = [];
     chat("sys", `Welcome to ForgeBound — Gamma (v${VERSION}) Update!`);
     chat("sys", "New: Combat System Active! Fight Goblins, Cows, and Chickens, pick up loot, and cook meat/eggs!");
-    chat("info", "Tip: Left-click monsters to attack. Left-click floor loot to pick up! Click bones in pack for Prayer XP.");
+    chat("info", "Tip: Left-click does the obvious thing. Right-click anything (in the world or your backpack) to see every action.");
     bump();
   };
 
@@ -1221,9 +1549,11 @@ export function useGame() {
       chat,
       gainXp,
       handleWorldClick,
-      clickGround,
+      worldActions,
       startRecipe,
       clickInventorySlot,
+      slotActions,
+      moveSlot,
       dropSlot,
       depositSlot,
       depositAll,
@@ -1236,6 +1566,7 @@ export function useGame() {
       dismissLevelUp,
       closeOverlays,
       openSettings,
+      openGuide,
       saveNow,
       setZoom,
       toggleGraphicsMode,

@@ -31,6 +31,8 @@ export interface ItemDef {
   price: number;
   heal?: number;
   tier?: number; // 1 bronze, 2 iron, 3 steel, 4 mithril
+  /** Level needed to wield or wear it. */
+  wield?: { skill: SkillId; level: number };
 }
 
 export type ResKey =
@@ -177,7 +179,7 @@ export interface GameState {
   y: number;
   path: { x: number; y: number }[];
   action: Action | null;
-  pendingStation: { kind: "craft" | "bank" | "shop"; station?: StationId; x: number; y: number } | null;
+  pendingStation: { kind: "craft" | "bank" | "shop" | "talk"; station?: StationId; x: number; y: number } | null;
   stationUI: { station: StationId; x: number; y: number } | null;
   depleted: Record<string, number>;
   chat: ChatMsg[];
@@ -198,4 +200,20 @@ export interface GameState {
   /** Which offensive skills melee hits train. At least one is always on;
    *  Defence is earned only from blows taken. */
   combatXp: { attack: boolean; strength: boolean };
+  // Hands-On v0.4.1
+  /** Backpack slot picked up with "Use", waiting for a target. */
+  selected: number | null;
+  /** Skill whose guide window is open. */
+  guide: SkillId | null;
+  /** Ground item (by id) the hero is walking over to take. */
+  pendingTake: number | null;
+}
+
+/** One line of a right-click menu. The first entry is what left-click does. */
+export interface MenuOption {
+  /** The verb, e.g. "Chop down". */
+  label: string;
+  /** What it acts on, shown highlighted after the verb. */
+  target?: string;
+  run: () => void;
 }

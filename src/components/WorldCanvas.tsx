@@ -3,6 +3,9 @@ import type { GameApi } from "../game/useGame";
 import { clampCam, render, tileSize } from "../game/render";
 import type { GameState } from "../game/types";
 import { dirFrom, type Dir } from "../game/figure";
+import { ITEMS } from "../game/data";
+import { ItemIcon } from "./ItemIcon";
+import { useContextMenu, useLongPress } from "./ContextMenu";
 
 // Cheap FNV-1a hash over the state the React panels display. Runs every
 // frame, so it walks the fields directly instead of JSON.stringify-ing them
@@ -22,6 +25,7 @@ function uiSignature(g: GameState): number {
     rec(g.equipped);
     num(g.coins); num(g.hp); num(g.zoom); str(g.graphicsMode);
     num(+g.bankOpen); num(+g.shopOpen); num(+g.settingsOpen);
+    num(g.selected ?? -7); str(g.guide ?? "");
     if (g.stationUI) { str(g.stationUI.station); num(g.stationUI.x); num(g.stationUI.y); } else num(-4);
     if (g.pendingStation) { str(g.pendingStation.kind); num(g.pendingStation.x); num(g.pendingStation.y); } else num(-5);
     // The log is capped at 90 entries, so key it by the newest id, not length.
@@ -135,21 +139,46 @@ export function WorldCanvas({ api }: { api: GameApi }) {
         };
     }, [api]);
 
-    const onClick = (e: React.MouseEvent) => {
-        const g = api.gref.current;
-        const canvas = canvasRef.current;
-        if (!g || !canvas) return;
-        const rect = canvas.getBoundingClientRect();
-        const offX = e.clientX - rect.left;
-        const offY = e.clientY - rect.top;
+    const openMenu = useContextMenu();
+    const heldRef = useRef<HTMLDivElement>(null);
+
+    /** The map tile under a screen point. */
+    const tileAt = (clientX: number, clientY: number) => {
+        const g = api.gref.current!;
+        const rect = canvasRef.current!.getBoundingClientRect();
         const effTile = tileSize(g.zoom);
-        const wx = camRef.current.x - rect.width / 2 + offX;
-        const wy = camRef.current.y - rect.height / 2 + offY;
-        const tx = Math.floor(wx / effTile);
-        const ty = Math.floor(wy / effTile);
+        const wx = camRef.current.x - rect.width / 2 + (clientX - rect.left);
+        const wy = camRef.current.y - rect.height / 2 + (clientY - rect.top);
+        return { tx: Math.floor(wx / effTile), ty: Math.floor(wy / effTile) };
+    };
+
+    const showMenu = (clientX: number, clientY: number) => {
+        if (!api.gref.current || !canvasRef.current) return;
+        const { tx, ty } = tileAt(clientX, clientY);
+        openMenu(clientX, clientY, api.worldActions(tx, ty));
+    };
+    const press = useLongPress(showMenu);
+
+    const onClick = (e: React.MouseEvent) => {
+        if (!api.gref.current || !canvasRef.current || press.fired()) return;
+        const { tx, ty } = tileAt(e.clientX, e.clientY);
         clicksRef.current.push({ x: tx, y: ty, t0: performance.now() });
-        if (api.handleWorldClick(tx, ty) === "walk") api.clickGround(tx, ty);
+        api.handleWorldClick(tx, ty);
         api.bump();
+    };
+
+    const onContextMenu = (e: React.MouseEvent) => {
+        e.preventDefault();
+        showMenu(e.clientX, e.clientY);
+    };
+
+    // The held item follows the cursor; moved directly so it never re-renders React
+    const onMouseMove = (e: React.MouseEvent) => {
+        const el = heldRef.current;
+        const wrap = wrapRef.current;
+        if (!el || !wrap) return;
+        const r = wrap.getBoundingClientRect();
+        el.style.transform = `translate(${e.clientX - r.left + 14}px, ${e.clientY - r.top + 12}px)`;
     };
 
     const onWheel = (e: React.WheelEvent) => {
@@ -158,15 +187,29 @@ export function WorldCanvas({ api }: { api: GameApi }) {
         api.setZoom(g.zoom + (e.deltaY < 0 ? 0.2 : -0.2));
     };
 
+    const g = api.gref.current;
+    const held = g && g.selected !== null ? g.inv[g.selected] : null;
+
     return (
-        <div ref={wrapRef} className="absolute inset-0 overflow-hidden">
+        <div ref={wrapRef} className="absolute inset-0 overflow-hidden" onMouseMove={onMouseMove}>
             <canvas
                 ref={canvasRef}
                 onClick={onClick}
                 onWheel={onWheel}
-                onContextMenu={(e) => e.preventDefault()}
-                className="block cursor-pointer select-none"
+                onContextMenu={onContextMenu}
+                {...press.handlers}
+                className={`block select-none ${held ? "cursor-crosshair" : "cursor-pointer"}`}
             />
+            {held && (
+                <>
+                    <div ref={heldRef} className="pointer-events-none absolute left-0 top-0 opacity-90 drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)]">
+                        <ItemIcon item={held.item} size={26} />
+                    </div>
+                    <div className="pointer-events-none absolute left-2.5 top-2.5 rounded-sm border border-[#6a5428] bg-[#14100a]/90 px-2.5 py-1 text-[11.5px] text-[#e0d6c0] shadow-[0_2px_10px_rgba(0,0,0,0.6)]">
+                        Use <span className="font-bold text-[#f0c858]">{ITEMS[held.item].name}</span> on… <span className="text-[#8a7a52]">(Esc to cancel)</span>
+                    </div>
+                </>
+            )}
         </div>
     );
 }

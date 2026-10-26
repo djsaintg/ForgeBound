@@ -4,6 +4,7 @@ import { drawFigure, dirFrom, type Dir, type Look } from "./figure";
 import { drawChicken, drawCow } from "./creatures";
 import { BURY_MS, STRIKES, emote, jobOf, strikesDone, toolFor, type Job } from "./anim";
 import { METALS, type GearShape } from "./gear";
+import { GROUND_ITEM_MS, GROUND_ITEM_WARN_MS } from "./data";
 
 export interface Cam {
   x: number;
@@ -1523,11 +1524,15 @@ export function render(
           if (Math.round(gi.y) === y && Math.round(gi.x) === x) {
             const gix = gi.x * effTile - sx + effTile / 2;
             const giy = gi.y * effTile - sy + effTile / 2;
+            // Blink through the last seconds before it despawns
+            const left = GROUND_ITEM_MS - (time - gi.t);
+            if (left < GROUND_ITEM_WARN_MS) ctx.globalAlpha = 0.35 + 0.65 * (0.5 + 0.5 * Math.cos(time / 140));
             if (is64) drawGroundItem64(ctx, gi.item, gix, giy, effTile, time);
             else {
               ctx.fillStyle = "#facc15";
               ctx.fillRect(gix - effTile * 0.15, giy - effTile * 0.15, effTile * 0.3, effTile * 0.3);
             }
+            ctx.globalAlpha = 1;
           }
         }
       }

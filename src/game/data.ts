@@ -26,15 +26,15 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   steel_bar: { id: "steel_bar", name: "Steel bar", cat: "bar", stackable: false, price: 260 },
   bronze_dagger: { id: "bronze_dagger", name: "Bronze dagger", cat: "weapon", stackable: false, price: 80, tier: 1 },
   iron_dagger: { id: "iron_dagger", name: "Iron dagger", cat: "weapon", stackable: false, price: 190, tier: 2 },
-  steel_dagger: { id: "steel_dagger", name: "Steel dagger", cat: "weapon", stackable: false, price: 480, tier: 3 },
+  steel_dagger: { id: "steel_dagger", name: "Steel dagger", cat: "weapon", stackable: false, price: 480, tier: 3, wield: { skill: "attack", level: 5 } },
   bronze_axe: { id: "bronze_axe", name: "Bronze axe", cat: "axe", stackable: false, price: 150, tier: 1 },
   iron_axe: { id: "iron_axe", name: "Iron axe", cat: "axe", stackable: false, price: 500, tier: 2 },
-  steel_axe: { id: "steel_axe", name: "Steel axe", cat: "axe", stackable: false, price: 1400, tier: 3 },
-  mithril_axe: { id: "mithril_axe", name: "Mithril axe", cat: "axe", stackable: false, price: 4000, tier: 4 },
+  steel_axe: { id: "steel_axe", name: "Steel axe", cat: "axe", stackable: false, price: 1400, tier: 3, wield: { skill: "woodcutting", level: 6 } },
+  mithril_axe: { id: "mithril_axe", name: "Mithril axe", cat: "axe", stackable: false, price: 4000, tier: 4, wield: { skill: "woodcutting", level: 21 } },
   bronze_pick: { id: "bronze_pick", name: "Bronze pickaxe", cat: "pick", stackable: false, price: 150, tier: 1 },
   iron_pick: { id: "iron_pick", name: "Iron pickaxe", cat: "pick", stackable: false, price: 500, tier: 2 },
-  steel_pick: { id: "steel_pick", name: "Steel pickaxe", cat: "pick", stackable: false, price: 1400, tier: 3 },
-  mithril_pick: { id: "mithril_pick", name: "Mithril pickaxe", cat: "pick", stackable: false, price: 4000, tier: 4 },
+  steel_pick: { id: "steel_pick", name: "Steel pickaxe", cat: "pick", stackable: false, price: 1400, tier: 3, wield: { skill: "mining", level: 6 } },
+  mithril_pick: { id: "mithril_pick", name: "Mithril pickaxe", cat: "pick", stackable: false, price: 4000, tier: 4, wield: { skill: "mining", level: 21 } },
   fly_rod: { id: "fly_rod", name: "Fly fishing rod", cat: "rod", stackable: false, price: 80, tier: 1 },
   // Combat & Livestock Drops
   bones: { id: "bones", name: "Bones", cat: "bone", stackable: false, price: 10 },
@@ -134,3 +134,72 @@ export const MARO_LINES = [
 ];
 
 export const SELL_RATIO = 0.55;
+
+/** Anything left on the ground (dropped items, loot, laid eggs) vanishes after this long. */
+export const GROUND_ITEM_MS = 120000;
+/** ...and blinks for this long before it goes, as a warning. */
+export const GROUND_ITEM_WARN_MS = 15000;
+
+/** Prayer XP for burying one set of bones. */
+export const BURY_XP = 25;
+
+export const ROKA_LINES = [
+  "Roka: Axes, picks, a good fly rod. Everything an honest worker needs, at an honest price!",
+  "Roka: Bring me ore, logs or fish and I'll pay you fair coin for them. Well, fair-ish.",
+  "Roka: A mithril pickaxe bites through rock like butter. Costly, mind, but worth every coin.",
+  "Roka: Those goblins up the gully drop bronze from time to time. I'll take it off your hands.",
+  "Roka: Trout won't bite a bare hook. Pluck some feathers from the coop hens first.",
+];
+
+/** Inspect text for every item, shown in the Adventurer's Log. */
+export const ITEM_EXAMINE: Record<ItemId, string> = {
+  coins: "Shiny coins, the currency of the valley.",
+  logs: "Freshly cut logs from a valley tree.",
+  oak_logs: "Heavy logs of seasoned oak.",
+  copper_ore: "A lump of copper ore. Smelt it with tin for bronze.",
+  tin_ore: "A lump of tin ore. Smelt it with copper for bronze.",
+  iron_ore: "A dense lump of iron ore.",
+  coal: "Black, crumbly and hot-burning. Steel needs it.",
+  gold_ore: "A glittering nugget of gold ore.",
+  raw_shrimp: "Some raw shrimp. Better cooked.",
+  shrimp: "Some nicely cooked shrimp.",
+  raw_trout: "A raw river trout, still slippery.",
+  trout: "A golden-brown trout, cooked to perfection.",
+  bronze_bar: "A bar of bronze, ready for the anvil.",
+  iron_bar: "A bar of solid iron.",
+  steel_bar: "A bar of fine steel.",
+  bronze_dagger: "A short bronze blade. Quick in the hand.",
+  iron_dagger: "A short iron blade.",
+  steel_dagger: "A short, keen steel blade.",
+  bronze_axe: "A woodcutter's axe with a bronze head.",
+  iron_axe: "A sturdy iron-headed axe.",
+  steel_axe: "A well-balanced steel axe.",
+  mithril_axe: "A light, wickedly sharp mithril axe.",
+  bronze_pick: "A miner's pickaxe with a bronze head.",
+  iron_pick: "A sturdy iron pickaxe.",
+  steel_pick: "A well-forged steel pickaxe.",
+  mithril_pick: "A light mithril pickaxe that bites through stone.",
+  fly_rod: "A whippy rod for fly fishing. Each cast needs a feather.",
+  bones: "Bones of the fallen. Bury them for Prayer.",
+  raw_beef: "A raw cut of beef. Cook it on the fire.",
+  cooked_beef: "A thick steak, seared on the campfire.",
+  raw_chicken: "Raw chicken. Don't eat it like this.",
+  cooked_chicken: "A roast chicken, crisp and golden.",
+  feathers: "Soft hen feathers. Fly fishers tie them to their hooks.",
+  egg: "A fresh farm egg from the coop.",
+  fried_egg: "A fried egg, sunny side up.",
+  bronze_sword: "A bronze sword with a good long reach.",
+  bronze_platebody: "A bronze breastplate. Heavy, but it turns a blow.",
+};
+
+/** Melee swing-time multiplier by weapon tier (0 = bare hands, slowest). */
+export const SWING_SPEED: Record<number, number> = { 0: 1.5, 1: 1, 2: 0.9, 3: 0.8, 4: 0.7 };
+
+export type FoeId = "cow" | "chicken" | "goblin" | "brigand";
+
+export const FOES: Record<FoeId, { name: string; level: number; hp: number; about: string }> = {
+  chicken: { name: "Coop hen", level: 1, hp: 3, about: "A plump hen. It sheds feathers and lays eggs." },
+  cow: { name: "Pasture cow", level: 2, hp: 8, about: "A placid cow, chewing the cud." },
+  goblin: { name: "Goblin Warrior", level: 5, hp: 12, about: "A scrappy goblin of the gully clan." },
+  brigand: { name: "Bramble Brigand", level: 11, hp: 22, about: "A hulking brute of the deep gully. Hits hard." },
+};
