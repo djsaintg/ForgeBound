@@ -5,6 +5,7 @@ import { drawChicken, drawCow } from "./creatures";
 import { BURY_MS, STRIKES, emote, jobOf, strikesDone, toolFor, type Job } from "./anim";
 import { METALS, type GearShape } from "./gear";
 import { GROUND_ITEM_MS, GROUND_ITEM_WARN_MS } from "./data";
+import { npcMarker, type NpcMarker } from "./quests";
 
 export interface Cam {
   x: number;
@@ -938,20 +939,7 @@ function drawObject64(ctx: CanvasRenderingContext2D, ch: string, x: number, y: n
       spawnParticles(cx + (Math.random() - 0.5) * s * 0.18, cy, 1, "#ff9a3c", 0.6);
     }
   } else if (ch === "f" || ch === "t") {
-    const bubbleOffset = (time / 300) % Math.PI;
-    ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
-    ctx.lineWidth = 1.5;
-    ctx.beginPath();
-    ctx.arc(cx + Math.sin(bubbleOffset) * (s * 0.15), cy + Math.cos(bubbleOffset) * (s * 0.15), s * 0.18, 0, Math.PI * 2);
-    ctx.stroke();
-
-    if (Math.sin(time / 450 + x) > 0.7) {
-      ctx.fillStyle = ch === "t" ? "#88bacc" : "#e0a17e";
-      ctx.beginPath();
-      const fy = cy - Math.sin(time / 200) * (s * 0.25);
-      ctx.ellipse(cx, fy, s * 0.14, s * 0.07, -0.4, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    drawFishingSpot(ctx, ch === "t", x, y, cx, cy, s, time);
   } else if (ch === "M" || ch === "P") {
     drawTownsfolk(ctx, ch === "P", cx, py, s, time);
   } else if (ch === "%" || ch === "^") {
@@ -970,6 +958,91 @@ function drawObject64(ctx: CanvasRenderingContext2D, ch: string, x: number, y: n
     drawFence(ctx, x, y, px, py, s);
   } else if (ch === "L") {
     drawAltar(ctx, cx, py, s, time);
+  }
+}
+
+// --- Fishing spots -----------------------------------------------------------
+// A patch of churned water: bubbles rise, swell and pop into ripple rings on a
+// staggered loop, so the spot always fizzes. The trout current adds foam
+// streaks dragged by the flow; both have a fish leaping now and then.
+function drawFishingSpot(ctx: CanvasRenderingContext2D, trout: boolean, x: number, y: number, cx: number, cy: number, s: number, time: number) {
+  // churned, lighter water under the bubbles
+  const churn = ctx.createRadialGradient(cx, cy, 1, cx, cy, s * 0.42);
+  churn.addColorStop(0, "rgba(200,235,245,0.22)");
+  churn.addColorStop(1, "rgba(200,235,245,0)");
+  ctx.fillStyle = churn;
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, s * 0.42, s * 0.3, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  if (trout) {
+    ctx.strokeStyle = "rgba(235,248,252,0.45)";
+    ctx.lineWidth = Math.max(1, s * 0.018);
+    ctx.lineCap = "round";
+    for (let i = 0; i < 4; i++) {
+      const k = (time / 900 + i / 4 + hash(x + i, y)) % 1;
+      const sx0 = cx - s * 0.4 + k * s * 0.8;
+      const sy0 = cy - s * 0.2 + i * s * 0.13;
+      ctx.globalAlpha = Math.sin(k * Math.PI);
+      ctx.beginPath();
+      ctx.moveTo(sx0 - s * 0.12, sy0);
+      ctx.quadraticCurveTo(sx0, sy0 - s * 0.03, sx0 + s * 0.12, sy0);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+  }
+
+  // a staggered set of bubbles, each on its own rise-swell-pop cycle
+  const count = trout ? 7 : 9;
+  for (let i = 0; i < count; i++) {
+    const seed = hash(x * 13 + i * 7.1, y * 5 + i * 3.3);
+    // One shared clock with evenly spread phases, so some are always mid-rise
+    const period = 1800 + seed * 500;
+    const k = (time / period + i / count + seed * 0.15) % 1;
+    const bx = cx + (hash(i * 3.7 + x, y + i * 1.9) - 0.5) * s * 0.62 + Math.sin(time / 500 + i) * s * 0.02 + (trout ? k * s * 0.08 : 0);
+    const by = cy + (hash(y + i * 2.3, x + i * 4.1) - 0.5) * s * 0.42 - k * s * 0.06;
+    const rMax = s * (0.035 + seed * 0.05);
+    if (k < 0.82) {
+      const r = rMax * (0.4 + 0.6 * Math.min(1, k / 0.45));
+      ctx.fillStyle = "rgba(225,245,252,0.28)";
+      ctx.strokeStyle = "rgba(255,255,255,0.75)";
+      ctx.lineWidth = Math.max(0.8, s * 0.012);
+      ctx.beginPath();
+      ctx.arc(bx, by, r, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "rgba(255,255,255,0.9)";
+      ctx.beginPath();
+      ctx.arc(bx - r * 0.35, by - r * 0.35, Math.max(0.6, r * 0.28), 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // pop: a quick expanding ring
+      const q = (k - 0.82) / 0.18;
+      ctx.strokeStyle = `rgba(255,255,255,${0.6 * (1 - q)})`;
+      ctx.lineWidth = Math.max(0.8, s * 0.012);
+      ctx.beginPath();
+      ctx.ellipse(bx, by, rMax * (1 + q * 1.6), rMax * (0.6 + q), 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
+
+  // a fish leaps clear of the water now and then
+  const leap = (time / 2600 + hash(x, y)) % 1;
+  if (leap < 0.22) {
+    const q = leap / 0.22;
+    const fx = cx - s * 0.18 + q * s * 0.36;
+    const fy = cy - Math.sin(q * Math.PI) * s * 0.28;
+    ctx.save();
+    ctx.translate(fx, fy);
+    ctx.rotate(-0.9 + q * 1.8);
+    ctx.fillStyle = trout ? "#9cc4d2" : "#e8a684";
+    ctx.beginPath();
+    ctx.ellipse(0, 0, s * 0.12, s * 0.055, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(-s * 0.1, 0); ctx.lineTo(-s * 0.17, -s * 0.05); ctx.lineTo(-s * 0.17, s * 0.05);
+    ctx.fill();
+    ctx.restore();
   }
 }
 
@@ -1385,7 +1458,7 @@ const MARO: Look = {
 };
 
 /** Roka at the trading post and Old Maro the guide, standing to greet the hero. */
-function drawTownsfolk(ctx: CanvasRenderingContext2D, isMaro: boolean, cx: number, py: number, s: number, time: number) {
+export function drawTownsfolk(ctx: CanvasRenderingContext2D, isMaro: boolean, cx: number, py: number, s: number, time: number) {
   if (!isMaro) {
     drawFigure(ctx, ROKA, { dir: "down", walk: null, time, rear: [0.0, 0.58], hand: [0.02, 0.56] }, cx, py, s);
     return;
@@ -1395,6 +1468,54 @@ function drawTownsfolk(ctx: CanvasRenderingContext2D, isMaro: boolean, cx: numbe
     tool: { shape: "staff", metal: "iron", len: 0.9, ang: 0 },
   }, cx, py, s);
   if (out.tip && Math.random() < 0.1) spawnParticles(out.tip.x, out.tip.y, 1, "#60dfff", 0.3);
+}
+
+// --- Quest markers ------------------------------------------------------------
+// Where the quest-giving townsfolk stand: Roka at "M", Old Maro at "P".
+const NPC_TILES: { x: number; y: number; npc: "maro" | "roka" }[] = [];
+for (let y = 0; y < MAP_H; y++) {
+  for (let x = 0; x < MAP_W; x++) {
+    const o = objAt(x, y);
+    if (o === "M") NPC_TILES.push({ x, y, npc: "roka" });
+    else if (o === "P") NPC_TILES.push({ x, y, npc: "maro" });
+  }
+}
+
+/** A gold or blue ! (quest on offer) or ? (ready to hand in), bobbing above the head. */
+function drawQuestMarker(ctx: CanvasRenderingContext2D, m: Exclude<NpcMarker, null>, cx: number, py: number, s: number, time: number, is64: boolean) {
+  const daily = m === "daily" || m === "daily-turnin";
+  const glyph = m === "turnin" || m === "daily-turnin" ? "?" : "!";
+  const [light, mid, dark] = daily ? ["#d8f0ff", "#4aa8ff", "#1a5aa8"] : ["#fff4b8", "#ffc81e", "#b07810"];
+  const bob = Math.sin(time / 380) * s * 0.04;
+  const y = py - s * 0.22 + bob;
+  const size = Math.max(16, Math.round(s * 0.42));
+
+  ctx.save();
+  if (is64) {
+    const glow = ctx.createRadialGradient(cx, y - size * 0.35, 1, cx, y - size * 0.35, size * 0.8);
+    glow.addColorStop(0, daily ? "rgba(90,170,255,0.45)" : "rgba(255,210,60,0.45)");
+    glow.addColorStop(1, "rgba(0,0,0,0)");
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(cx, y - size * 0.35, size * 0.8, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.font = `900 ${size}px 'Cinzel', Georgia, serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "alphabetic";
+  ctx.lineJoin = "round";
+  ctx.lineWidth = Math.max(3, size * 0.16);
+  ctx.strokeStyle = "rgba(20,12,4,0.95)";
+  ctx.strokeText(glyph, cx, y);
+  if (is64) {
+    const grad = ctx.createLinearGradient(0, y - size * 0.8, 0, y);
+    grad.addColorStop(0, light);
+    grad.addColorStop(0.5, mid);
+    grad.addColorStop(1, dark);
+    ctx.fillStyle = grad;
+  } else ctx.fillStyle = mid;
+  ctx.fillText(glyph, cx, y);
+  ctx.restore();
 }
 
 // --- The hero ----------------------------------------------------------------
@@ -1682,6 +1803,13 @@ export function render(
       ctx.fill();
     }
     ctx.globalAlpha = 1.0;
+  }
+
+  // 3b. Quest markers over Maro's and Roka's heads, drawn above everything else in the world
+  for (const n of NPC_TILES) {
+    if (n.x < tx0 || n.x > tx1 || n.y < ty0 || n.y > ty1) continue;
+    const m = npcMarker(g, n.npc);
+    if (m) drawQuestMarker(ctx, m, n.x * effTile + effTile / 2 - sx, n.y * effTile - sy, effTile, time, is64);
   }
 
   // 4. Click target destination flags

@@ -27,6 +27,9 @@ function uiSignature(g: GameState): number {
     num(+g.bankOpen); num(+g.shopOpen); num(+g.settingsOpen);
     num(g.selected ?? -7); str(g.guide ?? "");
     num(Math.ceil(g.prayer)); num(-8); for (const b of g.blessings) str(b);
+    if (g.dialogue) { num(g.dialogue.id); num(g.dialogue.page); } else num(-9);
+    for (const k in g.quests) { const q = g.quests[k as keyof typeof g.quests]!; str(k); num(q.step); num(q.count); num(+q.done); }
+    str(g.supply ?? ""); rec(g.supplyDay);
     if (g.stationUI) { str(g.stationUI.station); num(g.stationUI.x); num(g.stationUI.y); } else num(-4);
     if (g.pendingStation) { str(g.pendingStation.kind); num(g.pendingStation.x); num(g.pendingStation.y); } else num(-5);
     // The log is capped at 90 entries, so key it by the newest id, not length.

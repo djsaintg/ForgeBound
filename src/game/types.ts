@@ -2,7 +2,12 @@ export type SkillId =
   | "attack" | "hitpoints" | "mining" | "strength" | "agility" | "smithing" | "defence"
   | "herblore" | "fishing" | "ranged" | "crafting" | "cooking" | "prayer" | "woodcutting"
   | "magic" | "fletching" | "runecrafting" | "construction" | "dungeoneering" | "slayer"
-  | "farming" | "thieving";
+  | "farming" | "thieving" | "firemaking";
+
+/** Skills an XP bottle can hold; "combat" lets you choose Attack, Strength or both. */
+export type BottleSkill = "combat" | "woodcutting" | "mining" | "smithing" | "fishing" | "cooking" | "prayer";
+export type BottleSize = "small" | "medium" | "large";
+export type BottleId = `${BottleSkill}_bottle_${BottleSize}`;
 
 export type ItemId =
   | "coins" | "logs" | "oak_logs"
@@ -15,13 +20,15 @@ export type ItemId =
   | "fly_rod"
   // Combat & Livestock Drops
   | "bones" | "raw_beef" | "cooked_beef" | "raw_chicken" | "cooked_chicken"
-  | "feathers" | "egg" | "fried_egg" | "bronze_sword" | "bronze_platebody";
+  | "feathers" | "egg" | "fried_egg" | "bronze_sword" | "bronze_platebody"
+  // Quest rewards
+  | BottleId;
 
 export type ToolSlot = "weapon" | "axe" | "pick" | "rod" | "armor";
 
 export type ItemCat =
   | "currency" | "resource" | "ore" | "raw_fish" | "raw_food" | "food" | "bone"
-  | "bar" | "weapon" | "armor" | "axe" | "pick" | "rod";
+  | "bar" | "weapon" | "armor" | "axe" | "pick" | "rod" | "bottle";
 
 export interface ItemDef {
   id: ItemId;
@@ -33,6 +40,8 @@ export interface ItemDef {
   tier?: number; // 1 bronze, 2 iron, 3 steel, 4 mithril
   /** Level needed to wield or wear it. */
   wield?: { skill: SkillId; level: number };
+  /** XP bottles: which skill it pours into and how much. */
+  bottle?: { skill: BottleSkill; size: BottleSize; xp: number };
 }
 
 export type ResKey =
@@ -212,6 +221,57 @@ export interface GameState {
   prayer: number;
   /** Blessings switched on. */
   blessings: BlessingId[];
+  // Quests v0.4.3
+  /** Progress on every quest that has been started. */
+  quests: Partial<Record<QuestId, QuestProgress>>;
+  /** Roka's Supply Run request in hand, if any. */
+  supply: SupplyId | null;
+  /** The local date ("2026-10-26") each Supply Run was last handed in; each can be done once a day. */
+  supplyDay: Partial<Record<SupplyId, string>>;
+  /** The conversation on screen, if any. */
+  dialogue: Dialogue | null;
+}
+
+export type QuestId =
+  | "meat_for_the_table" | "north_pasture" | "grublin_gully"
+  | "smiths_first_lesson" | "plate_and_hammer" | "an_iron_will"
+  | "fishers_patience";
+
+export type NpcId = "maro" | "roka";
+
+/** Roka's four Supply Runs. */
+export type SupplyId = "eggs" | "feathers" | "chicken" | "logs";
+
+export interface QuestProgress {
+  /** Index of the current step; equal to the step count once the quest is done. */
+  step: number;
+  /** For "do" steps: how many times it's been done since the step began. */
+  count: number;
+  done: boolean;
+}
+
+/** Something the hero does that a quest step can be counting. */
+export type QuestEvent =
+  | { kind: "make"; item: ItemId }      // smelted, smithed or cooked
+  | { kind: "gather"; item: ItemId }    // chopped, mined or caught
+  | { kind: "kill"; foe: "cow" | "chicken" | "goblin" | "brigand" }
+  | { kind: "bury" }
+  | { kind: "eat"; item: ItemId };
+
+export interface DialogueOption {
+  label: string;
+  run: () => void;
+}
+
+/** A conversation: the NPC's lines one page at a time, then the hero's replies. */
+export interface Dialogue {
+  id: number;
+  npc: NpcId;
+  x: number;
+  y: number;
+  pages: string[];
+  page: number;
+  options: DialogueOption[];
 }
 
 export type BlessingId = "stoneskin" | "ox_might" | "mending" | "clear_eye";

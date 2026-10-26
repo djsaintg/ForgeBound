@@ -8,6 +8,7 @@ import { ActionBanner } from "./components/ActionBanner";
 import { SidePanels } from "./components/SidePanels";
 import { BankModal, ShopModal, SkillGuideModal, StationModal, SettingsModal } from "./components/Modals";
 import { ContextMenuProvider } from "./components/ContextMenu";
+import { DialogueBox } from "./components/DialogueBox";
 import { useSlotDropAnywhere } from "./components/SlotDrag";
 import { LevelUpOverlay } from "./components/LevelUpOverlay";
 import { ItemIcon } from "./components/ItemIcon";
@@ -182,6 +183,7 @@ function GameScreen({ name, cont, onExit }: { name: string; cont: boolean; onExi
       <div className="relative flex min-h-0 flex-1 px-2 pt-2">
         <div className="relative min-w-0 flex-1 overflow-hidden rounded-md border border-[#5c4a2a]/80 bg-black shadow-[inset_0_0_40px_rgba(0,0,0,0.8)]">
           <WorldCanvas api={api} />
+          <DialogueBox api={api} g={g} />
           {/* compass, then the action banner and XP orbs stacked beneath it */}
           <div className="pointer-events-none absolute right-2.5 top-2.5 flex w-[220px] flex-col items-center gap-2">
             <Minimap api={api} />

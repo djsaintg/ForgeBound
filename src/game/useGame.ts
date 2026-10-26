@@ -3,6 +3,9 @@ import { VERSION } from "../version";
 import type {
   Action,
   BlessingId,
+  DialogueOption,
+  NpcId,
+  QuestEvent,
   ChatKind,
   GameState,
   GroundItem,
@@ -32,6 +35,7 @@ import {
   ROKA_LINES,
   SELL_RATIO,
   STATION_NAMES,
+  SUPPLY_RUNS,
   SWING_SPEED,
   TOOL_SPEED,
 } from "./data";
@@ -40,12 +44,14 @@ import { adjacentTo, findPath } from "./pathfinding";
 import { MAX_XP, SKILLS, SKILL_BY_ID, fmt, levelForXp } from "./xp";
 import { sfx } from "./audio";
 import { emote, jobOf, strikesDone } from "./anim";
+import { NPC_NAME, QUESTS, currentStepOf, eventMatches, questPointsOf, stepProgressOf, today, type QuestDef } from "./quests";
 
 export const SAVE_KEY = "forgebound-save-v1";
 const STEP_MS = 168;
 /** How close (tiles) the hero must be to talk to an NPC. */
 const TALK_RANGE = 2;
-const SAVE_VERSION = 1;
+// v2 (0.4.3) adds quests and Supply Runs; v1 saves load with none started.
+const SAVE_VERSION = 2;
 let uid = 100;
 
 /** Something clickable on a world tile: its actions (default first) and what using an item on it does. */
@@ -127,6 +133,10 @@ export function freshState(name: string): GameState {
     pendingTake: null,
     prayer: 1,
     blessings: [],
+    quests: {},
+    supply: null,
+    supplyDay: {},
+    dialogue: null,
   };
 }
 
@@ -149,6 +159,9 @@ export function saveGame(g: GameState): boolean {
       groundItems: g.groundItems,
       combatXp: g.combatXp,
       prayer: g.prayer,
+      quests: g.quests,
+      supply: g.supply,
+      supplyDay: g.supplyDay,
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
     return true;
@@ -162,7 +175,7 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const p = JSON.parse(raw);
-    if (p?.version !== SAVE_VERSION) return null;
+    if (p?.version !== 1 && p?.version !== SAVE_VERSION) return null;
     const g = freshState(p.name ?? "Adventurer");
     g.coins = Number(p.coins) || 0;
     g.hp = Number(p.hp) || 20;
@@ -188,6 +201,9 @@ export function loadGame(): GameState | null {
     // Saves from before Prayer points start full
     const maxPrayer = levelForXp(g.xp.prayer);
     g.prayer = typeof p.prayer === "number" ? Math.max(0, Math.min(maxPrayer, p.prayer)) : maxPrayer;
+    if (p.quests && typeof p.quests === "object") g.quests = p.quests;
+    if (SUPPLY_RUNS.some((r) => r.id === p.supply)) g.supply = p.supply;
+    if (p.supplyDay && typeof p.supplyDay === "object") g.supplyDay = p.supplyDay;
     return g;
   } catch {
     return null;
@@ -360,6 +376,7 @@ export function useGame() {
     gg.shopOpen = false;
     gg.stationUI = null;
     gg.guide = null;
+    gg.dialogue = null;
   };
 
   /** Walk over and open the bank, shop or a station's recipe list. */
@@ -404,6 +421,234 @@ export function useGame() {
 
   /** Speak with (or hand something to) the NPC at x,y. */
   const speakTo = (x: number, y: number, say: () => void) => approach("talk", x, y, TALK_RANGE, say);
+
+  // ------------------------------------------------------------- quests --
+
+  const questPoints = () => questPointsOf(g());
+  const currentStep = (q: QuestDef) => currentStepOf(g(), q);
+  const stepProgress = (q: QuestDef) => stepProgressOf(g(), q);
+
+  /** Count a hero action toward any quest step waiting for it (only from the moment that step began). */
+  const questEvent = (e: QuestEvent) => {
+    const gg = g();
+    for (const q of QUESTS) {
+      const st = currentStep(q);
+      if (!st || st.kind !== "do" || !eventMatches(st.event, e)) continue;
+      const p = gg.quests[q.id]!;
+      if (p.count >= st.n) continue;
+      p.count++;
+      if (p.count >= st.n) chat("sys", `📜 ${q.name}: ${st.goal}, done! Report back to ${NPC_NAME[q.giver]}.`);
+    }
+  };
+
+  const fill = (line: string, vals: Record<string, string | number>) =>
+    line.replace(/\{(\w+)\}/g, (m, k) => (k in vals ? String(vals[k]) : m));
+
+  /** Put a conversation on screen: the NPC's lines one page at a time, then the replies. */
+  const say = (npc: NpcId, x: number, y: number, pages: string[], options: DialogueOption[] = [], vals: Record<string, string | number> = {}) => {
+    const gg = g();
+    const all = { name: gg.name, qp: questPoints(), ...vals };
+    gg.dialogue = { id: nextId(), npc, x, y, pages: pages.map((l) => fill(l, all)), page: 0, options };
+    bump();
+  };
+  const endTalk = () => { g().dialogue = null; bump(); };
+  const bye: DialogueOption = { label: "Goodbye.", run: endTalk };
+
+  const talkMaro = (x: number, y: number, pages?: string[]) => {
+    const gg = g();
+    const mine = QUESTS.filter((q) => q.giver === "maro");
+    const active = mine.filter((q) => currentStep(q));
+    const done = mine.filter((q) => gg.quests[q.id]?.done);
+    const greeting = pages
+      ?? (!Object.keys(gg.quests).length
+        ? ["Ah, a new face! I'm Maro. Old Maro, they call me, though I can't think why. What can I do for you?"]
+        : done.length && Math.random() < 0.4
+        ? [done[Math.floor(Math.random() * done.length)].afterword + " What can I do for you, {name}?"]
+        : ["Ah, {name}! Good to see you. What can I do for you?"]);
+    say("maro", x, y, greeting, [
+      ...active.map((q) => ({ label: `About "${q.name}"…`, run: () => aboutQuest(q, x, y) })),
+      { label: "Do you have any work for me?", run: () => maroWork(x, y) },
+      {
+        label: "Tell me about the valley.",
+        run: () => {
+          const idx = Math.floor(cowSeed.current++) % MARO_LINES.length;
+          say("maro", x, y, [MARO_LINES[idx]], [
+            { label: "Tell me more.", run: () => talkMaro(x, y, ["What else would you like to know?"]) },
+            bye,
+          ]);
+        },
+      },
+      bye,
+    ]);
+  };
+
+  /** "Something else": back to the giver's main menu. */
+  const back = (q: QuestDef | NpcId, x: number, y: number): DialogueOption => {
+    const npc = typeof q === "string" ? q : q.giver;
+    return { label: "Something else.", run: () => (npc === "maro" ? talkMaro(x, y, ["Anything else?"]) : talkRoka(x, y, ["Anything else?"])) };
+  };
+
+  const maroWork = (x: number, y: number) => {
+    const gg = g();
+    // Offered: open ones, plus any held back only by quest points (so Maro can say why)
+    const open = QUESTS.filter((q) => q.giver === "maro" && !gg.quests[q.id] && (q.after ?? []).every((a) => gg.quests[a]?.done));
+    if (!open.length) {
+      const allDone = QUESTS.filter((q) => q.giver === "maro").every((q) => gg.quests[q.id]?.done);
+      return say("maro", x, y, [allDone
+        ? "Not just now, young one. You've done everything I've asked, and more besides."
+        : "Nothing new just now. See to what you've already promised me first."], [back("maro", x, y), bye]);
+    }
+    if (open.length === 1) return offerQuest(open[0], x, y);
+    say("maro", x, y, ["Let me think… there's always something needs doing."], [
+      ...open.map((q) => ({ label: q.name, run: () => offerQuest(q, x, y) })),
+      back("maro", x, y),
+    ]);
+  };
+
+  const offerQuest = (q: QuestDef, x: number, y: number) => {
+    if (q.minQp && questPoints() < q.minQp) return say(q.giver, x, y, q.locked ?? [], [back(q, x, y), bye]);
+    say(q.giver, x, y, q.offer, [
+      { label: "I'll do it.", run: () => acceptQuest(q, x, y) },
+      { label: "Not right now.", run: () => say(q.giver, x, y, q.decline, [back(q, x, y), bye]) },
+    ]);
+  };
+
+  const acceptQuest = (q: QuestDef, x: number, y: number) => {
+    g().quests[q.id] = { step: 0, count: 0, done: false };
+    chat("sys", `📜 Quest started: ${q.name}. ${q.steps[0].goal}.`);
+    sfx.bless();
+    say(q.giver, x, y, q.accept, [back(q, x, y), bye]);
+  };
+
+  /** Talking about a quest in progress: report the step if it's met, otherwise a reminder. */
+  const aboutQuest = (q: QuestDef, x: number, y: number) => {
+    const st = currentStep(q);
+    if (!st) return talkMaro(x, y);
+    const prog = stepProgress(q);
+    if (!prog.met) return say(q.giver, x, y, st.checkIn, [back(q, x, y), bye], { n: prog.n, need: prog.need });
+
+    const gg = g();
+    const p = gg.quests[q.id]!;
+    const last = p.step === q.steps.length - 1;
+    if (last) {
+      // Make sure the rewards fit before taking anything
+      const slots = (q.reward.items?.length ?? 0) + (q.reward.choice ? 1 : 0) - (st.kind === "bring" ? st.n : 0);
+      if (slots > freeSlots(gg)) {
+        return say(q.giver, x, y, [`Your pack's full to bursting. Make room for ${slots - freeSlots(gg)} more and come back.`], [bye]);
+      }
+    }
+    if (st.kind === "bring") removeItems({ [st.item]: st.n });
+    if (!last) {
+      p.step++;
+      p.count = 0;
+      chat("sys", `📜 ${q.name}: ${q.steps[p.step].goal}.`);
+      sfx.coin();
+      return say(q.giver, x, y, st.done, [back(q, x, y), bye]);
+    }
+    const choice = q.reward.choice;
+    if (choice) {
+      return say(q.giver, x, y, [...st.done, choice.prompt], choice.items.map((it) => ({
+        label: `The ${ITEMS[it].name.toLowerCase()}.`,
+        run: () => { finishQuest(q, it); say(q.giver, x, y, ["A good choice. Use it well, young one."], [bye]); },
+      })));
+    }
+    finishQuest(q);
+    say(q.giver, x, y, st.done, [back(q, x, y), bye]);
+  };
+
+  const finishQuest = (q: QuestDef, choice?: ItemId) => {
+    const gg = g();
+    const p = gg.quests[q.id]!;
+    p.step = q.steps.length;
+    p.done = true;
+    const got: string[] = [];
+    if (q.reward.coins) { gg.coins += q.reward.coins; got.push(`${q.reward.coins} coins`); }
+    for (const it of [...(q.reward.items ?? []), ...(choice ? [choice] : [])]) {
+      addItem(it, 1);
+      got.push(ITEMS[it].name.toLowerCase());
+    }
+    chat("sys", `🏆 Quest complete: ${q.name}! You receive ${got.join(", ")} and ${q.reward.qp} quest point${q.reward.qp > 1 ? "s" : ""}.`);
+    sfx.levelUp();
+  };
+
+  // Roka's Supply Runs: four requests, each once per (local) day
+  const supplyPay = (item: ItemId, n: number) => 2 * Math.max(1, Math.floor(ITEMS[item].price * SELL_RATIO)) * n;
+
+  const talkRoka = (x: number, y: number, pages?: string[]) =>
+    say("roka", x, y, pages ?? ["Welcome to my stall! Buying, selling, or looking for work?"], [
+      { label: "Let's trade.", run: () => { endTalk(); openAt("shop", x, y); } },
+      { label: "Any work for me?", run: () => supplyTalk(x, y) },
+      {
+        label: "Any advice?",
+        run: () => say("roka", x, y, [ROKA_LINES[Math.floor(Math.random() * ROKA_LINES.length)].replace(/^Roka: /, "")], [back("roka", x, y), bye]),
+      },
+      bye,
+    ]);
+
+  const supplyTalk = (x: number, y: number) => {
+    const gg = g();
+    const run = SUPPLY_RUNS.find((r) => r.id === gg.supply);
+    if (run) {
+      const have = countItem(run.item);
+      const pay = supplyPay(run.item, run.n);
+      if (have < run.n) {
+        return say("roka", x, y, [`${run.n} ${run.label}, friend. You've got ${have} in your pack. ${pay} coins when you bring them!`], [back("roka", x, y), bye]);
+      }
+      return say("roka", x, y, [`Is that ${run.n} ${run.label} I see? Hand them over!`], [
+        {
+          label: "Here you go.",
+          run: () => {
+            removeItems({ [run.item]: run.n });
+            gg.coins += pay;
+            gg.supplyDay[run.id] = today();
+            gg.supply = null;
+            chat("sys", `📦 Supply Run done: ${run.n} ${run.label} for Roka · +${pay} coins.`);
+            sfx.coin();
+            const more = SUPPLY_RUNS.some((r) => gg.supplyDay[r.id] !== today());
+            say("roka", x, y, [more
+              ? "Pleasure doing business! Ask again whenever. I'm sure I've run out of something else already."
+              : "Pleasure doing business! That's everything I need today. Come back tomorrow, I'm sure to be short of something."], [back("roka", x, y), bye]);
+          },
+        },
+        { label: "Not yet.", run: () => say("roka", x, y, ["Suit yourself. I'll be here."], [back("roka", x, y), bye]) },
+      ]);
+    }
+    const open = SUPPLY_RUNS.filter((r) => gg.supplyDay[r.id] !== today());
+    if (!open.length) {
+      return say("roka", x, y, ["That's everything I need today. Come back tomorrow, I'm sure to be short of something!"], [back("roka", x, y), bye]);
+    }
+    const pick = open[Math.floor(Math.random() * open.length)];
+    const pay = supplyPay(pick.item, pick.n);
+    say("roka", x, y, [
+      `Business is booming and my shelves are bare! Bring me ${pick.n} ${pick.label} and I'll pay ${pay} coins.`,
+      "That's double what I'd give you over the counter, so don't tell anyone.",
+    ], [
+      {
+        label: "I'll do it.",
+        run: () => {
+          gg.supply = pick.id;
+          chat("sys", `📦 Supply Run: bring Roka ${pick.n} ${pick.label} for ${pay} coins.`);
+          say("roka", x, y, ["Wonderful! You know where to find me."], [back("roka", x, y), bye]);
+        },
+      },
+      { label: "Not right now.", run: () => say("roka", x, y, ["No matter. Ask me again any time today."], [back("roka", x, y), bye]) },
+    ]);
+  };
+
+  /** Dialogue box controls: next page, or pick a reply on the last one. */
+  const dialogueNext = () => {
+    const d = g().dialogue;
+    if (!d) return;
+    if (d.page < d.pages.length - 1) d.page++;
+    else if (!d.options.length) g().dialogue = null;
+    bump();
+  };
+  const dialogueChoose = (i: number) => {
+    const d = g().dialogue;
+    if (!d || d.page < d.pages.length - 1) return;
+    d.options[i]?.run();
+    bump();
+  };
 
   const maxPrayer = () => levelForXp(g().xp.prayer);
 
@@ -591,19 +836,7 @@ export function useGame() {
     const out: Thing[] = [];
     const inspect = (text: string): MenuOption => ({ label: "Inspect", run: () => chat("info", text) });
 
-    for (const gi of gg.groundItems ?? []) {
-      if (Math.round(gi.x) !== x || Math.round(gi.y) !== y) continue;
-      const name = `${ITEMS[gi.item]?.name ?? gi.item}${gi.n > 1 ? ` (${gi.n})` : ""}`;
-      out.push({
-        name,
-        actions: [
-          { label: "Take", target: name, run: () => take(gi.id) },
-          { label: "Inspect", target: name, run: () => chat("info", `${name}: ${ITEM_EXAMINE[gi.item]}`) },
-        ],
-        use: nothing,
-      });
-    }
-
+    // Foes come first, so left-click fights rather than grabbing loot underfoot
     const foes: [FoeKind, Foe[]][] = [["cow", gg.cows], ["chicken", gg.chickens ?? []], ["goblin", gg.goblins ?? []]];
     for (const [kind, list] of foes) {
       for (const f of list) {
@@ -621,6 +854,19 @@ export function useGame() {
       }
     }
 
+    for (const gi of gg.groundItems ?? []) {
+      if (Math.round(gi.x) !== x || Math.round(gi.y) !== y) continue;
+      const name = `${ITEMS[gi.item]?.name ?? gi.item}${gi.n > 1 ? ` (${gi.n})` : ""}`;
+      out.push({
+        name,
+        actions: [
+          { label: "Take", target: name, run: () => take(gi.id) },
+          { label: "Inspect", target: name, run: () => chat("info", `${name}: ${ITEM_EXAMINE[gi.item]}`) },
+        ],
+        use: nothing,
+      });
+    }
+
     const ch = objAt(x, y);
     const res = OBJ_TO_RES[ch];
     const station = OBJ_TO_STATION[ch];
@@ -631,13 +877,16 @@ export function useGame() {
           { label: "Trade", target: "Roka", run: () => openAt("shop", x, y) },
           {
             label: "Talk to", target: "Roka",
-            run: () => speakTo(x, y, () => { chat("npc", ROKA_LINES[Math.floor(Math.random() * ROKA_LINES.length)]); sfx.click(); }),
+            run: () => speakTo(x, y, () => talkRoka(x, y)),
           },
           { ...inspect("Roka, the valley trader. Buys and sells tools, gear and goods."), target: "Roka" },
         ],
         use: (slot) => {
           const s = gg.inv[slot];
           if (!s) return;
+          // Handing over a Supply Run's goods goes straight to the hand-in
+          const run = SUPPLY_RUNS.find((r) => r.id === gg.supply);
+          if (run && run.item === s.item) return speakTo(x, y, () => supplyTalk(x, y));
           const each = Math.max(1, Math.floor(ITEMS[s.item].price * SELL_RATIO));
           speakTo(x, y, () => chat("npc", `Roka: I'd give you ${each} coin${each > 1 ? "s" : ""} for ${s.n > 1 ? "each of those" : "that"}. Trade with me if you want to sell.`));
         },
@@ -648,17 +897,20 @@ export function useGame() {
         actions: [
           {
             label: "Talk to", target: "Old Maro",
-            run: () => speakTo(x, y, () => {
-              const idx = Math.floor(cowSeed.current++) % MARO_LINES.length;
-              chat("npc", `Old Maro: ${MARO_LINES[idx]}`);
-              sfx.click();
-            }),
+            run: () => speakTo(x, y, () => talkMaro(x, y)),
           },
           { ...inspect("Old Maro, the valley's guide, full of good advice."), target: "Old Maro" },
         ],
         use: (slot) => {
           const s = gg.inv[slot];
-          if (s) speakTo(x, y, () => chat("npc", `Old Maro: ${ITEMS[s.item].name}? Hold on to it, young one. You'll find a use for it.`));
+          if (!s) return;
+          // Handing over what a quest asked for goes straight to that quest
+          const q = QUESTS.find((d) => {
+            const st = currentStep(d);
+            return d.giver === "maro" && st && st.kind !== "do" && st.item === s.item;
+          });
+          if (q) return speakTo(x, y, () => aboutQuest(q, x, y));
+          speakTo(x, y, () => chat("npc", `Old Maro: ${ITEMS[s.item].name}? Hold on to it, young one. You'll find a use for it.`));
         },
       });
     } else if (ch === "B") {
@@ -843,6 +1095,7 @@ export function useGame() {
     }
     gainXp(def.skill, def.xp);
     gg.counters.gathered++;
+    questEvent({ kind: "gather", item: def.item });
     if (def.respawn > 0) gg.depleted[key] = now + def.respawn;
     if (def.skill === "fishing") sfx.splash(); else sfx.gather();
     const got: Record<string, string> = {
@@ -886,6 +1139,7 @@ export function useGame() {
     addItem(r.output, 1);
     gainXp(r.skill, r.xp);
     gg.counters.made++;
+    questEvent({ kind: "make", item: r.output });
     sfx.smith();
     chat("info", `${gg.name} crafted ${ITEMS[r.output]?.name.toLowerCase() || r.output} · +${r.xp} XP`);
     // Stop as soon as the last set of materials is used, rather than swinging
@@ -963,6 +1217,7 @@ export function useGame() {
       target.diedAt = now; // drives the death-fade in the renderer
       gg.counters.kills = (gg.counters.kills || 0) + 1;
       sfx.kill();
+      questEvent({ kind: "kill", foe: a.targetKind === "goblin" && target.maxHp >= FOES.brigand.hp ? "brigand" : a.targetKind });
 
       // Table-driven drop, reported as one combined line.
       if (!gg.groundItems) gg.groundItems = [];
@@ -1229,6 +1484,9 @@ export function useGame() {
       }
     } else mendAcc.current = 0;
 
+    // Walking away ends a conversation
+    if (gg.dialogue && Math.max(Math.abs(gg.x - gg.dialogue.x), Math.abs(gg.y - gg.dialogue.y)) > TALK_RANGE + 1) gg.dialogue = null;
+
     // A held item that got used up or moved away is put down
     if (gg.selected !== null && !gg.inv[gg.selected]) gg.selected = null;
 
@@ -1237,11 +1495,13 @@ export function useGame() {
     gg.xpEvents = gg.xpEvents.filter((e) => now - e.t < 2000);
   };
 
-  type Primary = "Eat" | "Bury" | "Wield" | "Wear";
+  type Primary = "Eat" | "Bury" | "Wield" | "Wear" | "Pour";
   /** What left-click does to an item without a selection; null means select it. */
   const primaryOf = (item: ItemId): Primary | null => {
     const cat = ITEMS[item].cat;
     if (cat === "food") return "Eat";
+    // A combat bottle has no default: its menu asks where the XP should go
+    if (cat === "bottle") return ITEMS[item].bottle?.skill === "combat" ? null : "Pour";
     if (cat === "bone") return "Bury";
     if (cat === "armor") return "Wear";
     if (cat === "axe" || cat === "pick" || cat === "rod" || cat === "weapon") return "Wield";
@@ -1262,6 +1522,7 @@ export function useGame() {
       sfx.bury();
       emote.buryAt = performance.now();
       chat("sys", `${gg.name} buried the bones in reverent prayer · +${BURY_XP} Prayer XP`);
+      questEvent({ kind: "bury" });
     } else if (def.cat === "axe" || def.cat === "pick" || def.cat === "rod" || def.cat === "weapon" || def.cat === "armor") {
       if (!canWield(s.item)) return wieldError(s.item);
       const slot: ToolSlot = def.cat;
@@ -1271,13 +1532,35 @@ export function useGame() {
       gg.equipped[slot] = s.item;
       chat("info", `${gg.name} donned the ${def.name.toLowerCase()}.`);
       sfx.click();
+    } else if (def.cat === "bottle") {
+      return pourBottle(idx);
     } else if (def.cat === "food") {
       gg.inv[idx] = s.n > 1 ? { item: s.item, n: s.n - 1 } : null;
       const healAmount = def.heal ?? 3;
       gg.hp = Math.min(gg.maxHp, gg.hp + healAmount);
       chat("info", `${gg.name} heartily ate ${art(def.name)} ${def.name.toLowerCase()} · +${healAmount} HP`);
       sfx.gather();
+      questEvent({ kind: "eat", item: s.item });
     }
+    bump();
+  };
+
+  /** Pour an XP bottle; a combat bottle goes into Attack, Strength or half into each. */
+  const pourBottle = (idx: number, into?: "attack" | "strength" | "split") => {
+    const gg = g();
+    const s = gg.inv[idx];
+    const b = s && ITEMS[s.item].bottle;
+    if (!s || !b) return;
+    if (b.skill === "combat" && !into) return;
+    gg.inv[idx] = null;
+    gg.selected = null;
+    if (b.skill !== "combat") gainXp(b.skill, b.xp);
+    else if (into === "split") { gainXp("attack", b.xp / 2); gainXp("strength", b.xp / 2); }
+    else gainXp(into!, b.xp);
+    const where = b.skill !== "combat" ? SKILL_BY_ID[b.skill].name
+      : into === "split" ? "Attack and Strength" : SKILL_BY_ID[into!].name;
+    chat("sys", `${gg.name} uncorks the bottle and the light pours into ${where} · +${b.xp} XP`);
+    sfx.bless();
     bump();
   };
 
@@ -1357,6 +1640,13 @@ export function useGame() {
     // With the bank or shop open, the backpack deposits or sells first
     if (gg.bankOpen) opts.push({ label: "Deposit", target: name, run: () => depositSlot(idx) });
     if (gg.shopOpen) opts.push({ label: "Sell", target: name, run: () => sellSlot(idx) });
+    if (ITEMS[s.item].bottle?.skill === "combat") {
+      opts.push(
+        { label: "Pour into Attack", target: name, run: () => pourBottle(idx, "attack") },
+        { label: "Pour into Strength", target: name, run: () => pourBottle(idx, "strength") },
+        { label: "Split between both", target: name, run: () => pourBottle(idx, "split") },
+      );
+    }
     const primary = primaryOf(s.item);
     const use: MenuOption = { label: "Use", target: name, run: () => selectSlot(idx) };
     if (primary) opts.push({ label: primary, target: name, run: () => applySlot(idx) }, use);
@@ -1650,6 +1940,11 @@ export function useGame() {
       openSettings,
       openGuide,
       toggleBlessing,
+      dialogueNext,
+      dialogueChoose,
+      endTalk,
+      questPoints,
+      stepProgress,
       saveNow,
       setZoom,
       toggleGraphicsMode,

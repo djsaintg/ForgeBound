@@ -1,7 +1,8 @@
 import { Fragment, useRef, useState } from "react";
 import type { GameState, ItemId, MenuOption, ToolSlot } from "../game/types";
 import type { GameApi } from "../game/useGame";
-import { BLESSINGS, BLESSING_BY_ID, ITEMS, SELL_RATIO } from "../game/data";
+import { BLESSINGS, BLESSING_BY_ID, ITEMS, SELL_RATIO, SUPPLY_RUNS } from "../game/data";
+import { NPC_NAME, QUESTS } from "../game/quests";
 import { SKILLS, fmt, levelForXp, progressIntoLevel, totalLevel } from "../game/xp";
 import { ItemIcon } from "./ItemIcon";
 import { useContextMenu, useLongPress } from "./ContextMenu";
@@ -55,6 +56,7 @@ export function SidePanels({ api, g }: { api: GameApi; g: GameState }) {
                   {pane.active === "inv" && <Inventory api={api} g={g} />}
                   {pane.active === "skills" && <Skills api={api} g={g} />}
                   {pane.active === "prayer" && <Prayer api={api} g={g} />}
+                  {pane.active === "quests" && <Quests api={api} g={g} />}
                   {pane.active === "gear" && <Gear api={api} g={g} />}
                 </div>
                 {dragTab && <DockOverlay i={i} tab={dragTab} onDone={() => setDragTab(null)} />}
@@ -135,7 +137,7 @@ function TabBar({ api, panes, i, dragTab, setDragTab }: {
         <button
           onClick={() => api.openSettings()}
           title="Engine settings — zoom, renderer & audio"
-          className="ml-auto flex items-center px-2.5 text-[#8a7a52] transition-colors hover:bg-[#1d1610] hover:text-[#f0c858]"
+          className="ml-auto flex shrink-0 items-center px-1.5 text-[#8a7a52] transition-colors hover:bg-[#1d1610] hover:text-[#f0c858]"
         >
           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="animate-spin-slow">
             <circle cx="12" cy="12" r="3" />
@@ -162,7 +164,7 @@ function TabButton({ label, active, dragging, onSelect, onMenu, onDragStart, onD
       onContextMenu={(e) => { e.preventDefault(); onMenu(e.clientX, e.clientY); }}
       {...press.handlers}
       title="Drag to another pane, or right-click to move"
-      className={`font-display flex-auto px-1 py-2 text-[10px] font-bold tracking-[0.08em] transition-colors ${
+      className={`font-display min-w-0 flex-auto truncate px-0.5 py-2 text-[9.5px] font-bold tracking-[0.03em] transition-colors ${
         active
           ? "border-b-2 border-[#d8b25c] bg-[#241c10] text-[#e8c876]"
           : "text-[#8a7a52] hover:bg-[#1d1610] hover:text-[#c8b070]"
@@ -243,7 +245,12 @@ function InvSlotButton({ api, g, i, over, setOver }: {
       onDragOver={(e) => { if (!over && e.dataTransfer.types.includes(SLOT_MIME)) setOver(i); }}
       onDragEnd={() => setOver(null)}
       onDrop={() => setOver(null)}
-      onClick={(e) => { if (!press.fired() && !touch.dragged()) api.clickInventorySlot(i, e.shiftKey); }}
+      onClick={(e) => {
+        if (press.fired() || touch.dragged()) return;
+        // A combat bottle asks where its XP should go
+        if (slot && !e.shiftKey && g.selected === null && ITEMS[slot.item].bottle?.skill === "combat") return showMenu(e.clientX, e.clientY);
+        api.clickInventorySlot(i, e.shiftKey);
+      }}
       onContextMenu={(e) => { e.preventDefault(); showMenu(e.clientX, e.clientY); }}
       onPointerDown={(e) => { press.handlers.onPointerDown(e); touch.handlers.onPointerDown(e); }}
       onPointerMove={(e) => { press.handlers.onPointerMove(e); touch.handlers.onPointerMove(e); }}
@@ -331,6 +338,81 @@ function Skills({ api, g }: { api: GameApi; g: GameState }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Quests you've taken on: in progress first (with the current step and its
+ * count), then finished. New quests aren't listed: look for a ! over
+ * someone's head and talk to them.
+ */
+function Quests({ api, g }: { api: GameApi; g: GameState }) {
+  const qp = api.questPoints();
+  const total = QUESTS.reduce((s, q) => s + q.reward.qp, 0);
+  const taken = QUESTS.filter((q) => g.quests[q.id]);
+  const list = [...taken.filter((q) => !g.quests[q.id]!.done), ...taken.filter((q) => g.quests[q.id]!.done)];
+  const supply = SUPPLY_RUNS.find((r) => r.id === g.supply);
+  const supplyHave = supply ? Math.min(supply.n, g.inv.reduce((s, x) => (x && x.item === supply.item ? s + x.n : s), 0)) : 0;
+
+  return (
+    <div>
+      <div className="mb-2 flex items-center justify-between rounded-sm border border-[#3a2f1e] bg-[#0f0b08] px-2 py-1">
+        <span className="font-display text-[10px] font-bold tracking-[0.2em] text-[#a8905a]">QUEST POINTS</span>
+        <span className="font-display text-[15px] font-black text-[#e8c876]">{qp}<span className="text-[11px] text-[#8a7a52]"> / {total}</span></span>
+      </div>
+      {!list.length && !supply && (
+        <p className="rounded-sm border border-dashed border-[#3a2f1e] px-3 py-4 text-center text-[11.5px] leading-snug text-[#8a7a52]">
+          No quests yet. Look for a <span className="font-bold text-[#ffc81e]">!</span> above someone's head and talk to them.
+        </p>
+      )}
+      <div className="flex flex-col gap-1">
+        {supply && (
+          <div className="rounded-sm border border-[#2a5a8a] bg-[#0e1622] px-2 py-1.5">
+            <div className="flex items-center gap-1.5">
+              <span className="w-4 shrink-0 text-center text-[12px] font-black text-[#4aa8ff]">!</span>
+              <span className="flex-1 truncate text-[12px] font-bold text-[#e0d6c0]">Supply Run</span>
+              <span className="shrink-0 text-[9.5px] uppercase tracking-wider text-[#8a7a52]">Roka · daily</span>
+            </div>
+            <div className="mt-0.5 flex items-center gap-1.5 pl-5 text-[10.5px]">
+              <span className={`flex-1 ${supplyHave >= supply.n ? "text-[#7ee06a]" : "text-[#c8b070]"}`}>
+                Bring Roka {supply.n} {supply.label}{supplyHave >= supply.n ? " · report to Roka" : ""}
+              </span>
+              <span className="font-bold tabular-nums text-[#f0c858]">{supplyHave}/{supply.n}</span>
+            </div>
+          </div>
+        )}
+        {list.map((q) => {
+          const p = g.quests[q.id]!;
+          const step = p.done ? null : q.steps[p.step];
+          const prog = step ? api.stepProgress(q) : null;
+          return (
+            <div
+              key={q.id}
+              className={`rounded-sm border px-2 py-1.5 ${p.done ? "border-[#2a3a1e] bg-[#10140c]" : "border-[#8a6a2e] bg-[#1f180e]"}`}
+            >
+              <div className="flex items-center gap-1.5">
+                <span className="w-4 shrink-0 text-center text-[11px]">
+                  {p.done ? <span className="text-[#7ee06a]">✔</span> : prog?.met ? <span className="font-black text-[#ffc81e]">?</span> : "📜"}
+                </span>
+                <span className={`flex-1 truncate text-[12px] font-bold ${p.done ? "text-[#8aa070]" : "text-[#e0d6c0]"}`}>{q.name}</span>
+                <span className="shrink-0 text-[9.5px] uppercase tracking-wider text-[#8a7a52]">{NPC_NAME[q.giver]}</span>
+              </div>
+              {step && prog && (
+                <div className="mt-0.5 flex items-center gap-1.5 pl-5 text-[10.5px]">
+                  <span className={`flex-1 ${prog.met ? "text-[#7ee06a]" : "text-[#c8b070]"}`}>
+                    {step.goal}{prog.met ? ` · report to ${NPC_NAME[q.giver]}` : ""}
+                  </span>
+                  {prog.need > 1 && <span className="font-bold tabular-nums text-[#f0c858]">{prog.n}/{prog.need}</span>}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <p className="mt-2 text-[10.5px] leading-snug text-[#6a5a3a]">
+        A gold <span className="font-bold text-[#ffc81e]">!</span> means a new quest, blue <span className="font-bold text-[#4aa8ff]">!</span> a daily job, and <span className="font-bold text-[#ffc81e]">?</span> that something's ready to hand in.
+      </p>
     </div>
   );
 }

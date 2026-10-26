@@ -4,10 +4,10 @@
 // browser in localStorage.
 import { useSyncExternalStore } from "react";
 
-export type TabId = "inv" | "skills" | "prayer" | "gear";
+export type TabId = "inv" | "skills" | "prayer" | "quests" | "gear";
 
-export const TAB_LABEL: Record<TabId, string> = { inv: "Inventory", skills: "Skills", prayer: "Prayer", gear: "Gear" };
-const ALL_TABS: TabId[] = ["inv", "skills", "prayer", "gear"];
+export const TAB_LABEL: Record<TabId, string> = { inv: "Inventory", skills: "Skills", prayer: "Prayer", quests: "Quests", gear: "Gear" };
+const ALL_TABS: TabId[] = ["inv", "skills", "prayer", "quests", "gear"];
 
 export interface Pane {
   tabs: TabId[];

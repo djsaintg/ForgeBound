@@ -65,6 +65,7 @@ export const SKILLS: SkillMeta[] = [
   { id: "cooking", name: "Cooking", icon: "🍳", color: "#cf7a42", impl: true },
   { id: "prayer", name: "Prayer", icon: "✨", color: "#e2dcc8", impl: true },
   { id: "woodcutting", name: "Woodcutting", icon: "🪓", color: "#7ea643", impl: true },
+  { id: "firemaking", name: "Firemaking", icon: "🔥", color: "#e8742c", impl: false },
   { id: "magic", name: "Magic", icon: "🔮", color: "#6a70d6", impl: false },
   { id: "fletching", name: "Fletching", icon: "🪶", color: "#8c7b57", impl: false },
   { id: "runecrafting", name: "Runecrafting", icon: "◈", color: "#c9c263", impl: false },

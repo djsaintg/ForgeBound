@@ -1,6 +1,10 @@
 import type {
   BlessingDef,
   BlessingId,
+  BottleId,
+  BottleSize,
+  BottleSkill,
+  SupplyId,
   ItemDef,
   ItemId,
   RecipeDef,
@@ -10,7 +14,32 @@ import type {
   StationId,
 } from "./types";
 
+// XP bottles, a quest reward: one per skill in three sizes, so a quest's
+// reward can grow along its chain without racing anyone up the levels.
+export const BOTTLE_XP: Record<BottleSize, number> = { small: 150, medium: 400, large: 1000 };
+const BOTTLE_SKILL_NAME: Record<BottleSkill, string> = {
+  combat: "Combat", woodcutting: "Woodcutting", mining: "Mining", smithing: "Smithing",
+  fishing: "Fishing", cooking: "Cooking", prayer: "Prayer",
+};
+export const bottleId = (skill: BottleSkill, size: BottleSize) => `${skill}_bottle_${size}` as BottleId;
+const BOTTLES = {} as Record<BottleId, ItemDef>;
+const BOTTLE_EXAMINE = {} as Record<BottleId, string>;
+for (const skill of Object.keys(BOTTLE_SKILL_NAME) as BottleSkill[]) {
+  for (const size of Object.keys(BOTTLE_XP) as BottleSize[]) {
+    const id = bottleId(skill, size);
+    const xp = BOTTLE_XP[size];
+    BOTTLES[id] = {
+      id, name: `${size[0].toUpperCase()}${size.slice(1)} ${BOTTLE_SKILL_NAME[skill]} XP bottle`,
+      cat: "bottle", stackable: false, price: 2, bottle: { skill, size, xp },
+    };
+    BOTTLE_EXAMINE[id] = skill === "combat"
+      ? `A bottle of swirling red light worth ${xp} XP. Pour it into Attack, Strength, or split it between both.`
+      : `A bottle of swirling light worth ${xp} ${BOTTLE_SKILL_NAME[skill]} XP. Pour it to drink in the knowledge.`;
+  }
+}
+
 export const ITEMS: Record<ItemId, ItemDef> = {
+  ...BOTTLES,
   coins: { id: "coins", name: "Coins", cat: "currency", stackable: true, price: 1 },
   logs: { id: "logs", name: "Logs", cat: "resource", stackable: false, price: 12 },
   oak_logs: { id: "oak_logs", name: "Oak logs", cat: "resource", stackable: false, price: 30 },
@@ -41,7 +70,7 @@ export const ITEMS: Record<ItemId, ItemDef> = {
   // Combat & Livestock Drops
   bones: { id: "bones", name: "Bones", cat: "bone", stackable: false, price: 10 },
   raw_beef: { id: "raw_beef", name: "Raw beef", cat: "raw_food", stackable: false, price: 15 },
-  cooked_beef: { id: "cooked_beef", name: "Steak", cat: "food", stackable: false, price: 90, heal: 9 },
+  cooked_beef: { id: "cooked_beef", name: "Steak", cat: "food", stackable: false, price: 60, heal: 6 },
   raw_chicken: { id: "raw_chicken", name: "Raw chicken", cat: "raw_food", stackable: false, price: 10 },
   cooked_chicken: { id: "cooked_chicken", name: "Cooked chicken", cat: "food", stackable: false, price: 30, heal: 4 },
   feathers: { id: "feathers", name: "Feathers", cat: "resource", stackable: true, price: 3 },
@@ -99,7 +128,7 @@ export const RECIPES: RecipeDef[] = [
   { id: "smith_bronze_platebody", name: "Smith bronze armor", station: "anvil", skill: "smithing", level: 5, xp: 45, cycle: 3200, inputs: { bronze_bar: 3 }, output: "bronze_platebody" },
   { id: "cook_shrimp", name: "Cook shrimp", station: "fire", skill: "cooking", level: 1, xp: 30, cycle: 2000, inputs: { raw_shrimp: 1 }, output: "shrimp" },
   { id: "cook_trout", name: "Cook trout", station: "fire", skill: "cooking", level: 15, xp: 70, cycle: 2400, inputs: { raw_trout: 1 }, output: "trout" },
-  { id: "cook_beef", name: "Cook steak", station: "fire", skill: "cooking", level: 15, xp: 70, cycle: 2400, inputs: { raw_beef: 1 }, output: "cooked_beef" },
+  { id: "cook_beef", name: "Cook steak", station: "fire", skill: "cooking", level: 5, xp: 45, cycle: 2400, inputs: { raw_beef: 1 }, output: "cooked_beef" },
   { id: "cook_chicken", name: "Roast chicken", station: "fire", skill: "cooking", level: 1, xp: 30, cycle: 2000, inputs: { raw_chicken: 1 }, output: "cooked_chicken" },
   { id: "cook_egg", name: "Fry farm egg", station: "fire", skill: "cooking", level: 1, xp: 20, cycle: 1800, inputs: { egg: 1 }, output: "fried_egg" },
 ];
@@ -156,6 +185,7 @@ export const ROKA_LINES = [
 
 /** Inspect text for every item, shown in the Adventurer's Log. */
 export const ITEM_EXAMINE: Record<ItemId, string> = {
+  ...BOTTLE_EXAMINE,
   coins: "Shiny coins, the currency of the valley.",
   logs: "Freshly cut logs from a valley tree.",
   oak_logs: "Heavy logs of seasoned oak.",
@@ -221,3 +251,19 @@ export const BLESSING_BY_ID: Record<BlessingId, BlessingDef> = Object.fromEntrie
 
 /** Mending Light: one HP back every this many ms. */
 export const MENDING_MS = 6000;
+
+export interface SupplyDef {
+  id: SupplyId;
+  item: ItemId;
+  n: number;
+  /** How Roka names them: "4 farm eggs". */
+  label: string;
+}
+
+/** Roka's Supply Runs: each pays double the shop's buy-back price, once a day. */
+export const SUPPLY_RUNS: SupplyDef[] = [
+  { id: "eggs", item: "egg", n: 4, label: "farm eggs" },
+  { id: "feathers", item: "feathers", n: 10, label: "feathers" },
+  { id: "chicken", item: "raw_chicken", n: 3, label: "raw chicken" },
+  { id: "logs", item: "logs", n: 5, label: "logs" },
+];

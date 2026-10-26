@@ -1,5 +1,6 @@
 import React from "react";
-import type { ItemId } from "../game/types";
+import type { BottleSize, BottleSkill, ItemId } from "../game/types";
+import { SKILL_BY_ID } from "../game/xp";
 import { ITEMS } from "../game/data";
 import { ORE_COLORS } from "../game/render";
 import { GEAR, GEAR_OUTLINE, gearColor, gearFor, type GearShape, type Metal } from "../game/gear";
@@ -52,7 +53,7 @@ export const ItemIcon: React.FC<Props> = ({ item, size = "md", count }) => {
       case "feathers": return "🪶";
       case "egg": return "🥚";
       case "fried_egg": return "🍳";
-      default: return "📦";
+      default: return ITEMS[id]?.bottle ? "🧪" : "📦";
     }
   };
 
@@ -152,10 +153,45 @@ export const ItemIcon: React.FC<Props> = ({ item, size = "md", count }) => {
     );
   };
 
+  // XP bottle: a corked glass flask of glowing liquid in the skill's colour.
+  // Small is a squat vial, medium a round flask, large a tall decanter.
+  const bottleSvg = (skill: BottleSkill, size: BottleSize) => {
+    const liquid = skill === "combat" ? "#e05252" : SKILL_BY_ID[skill].color;
+    const body = {
+      small: "M9.6 9 L14.4 9 L15.6 12 Q16.4 19.4 12 19.6 Q7.6 19.4 8.4 12 Z",
+      medium: "M10.4 8.6 L13.6 8.6 L13.6 10.4 Q18.6 12.2 17.6 16.6 Q16.6 20.4 12 20.4 Q7.4 20.4 6.4 16.6 Q5.4 12.2 10.4 10.4 Z",
+      large: "M10.6 6.4 L13.4 6.4 L13.4 9.6 Q17.6 11 17.4 15.4 L17.2 19 Q17 21 12 21 Q7 21 6.8 19 L6.6 15.4 Q6.4 11 10.6 9.6 Z",
+    }[size];
+    const fillTop = { small: 12.6, medium: 13, large: 12.4 }[size];
+    const neckTop = { small: 9, medium: 8.6, large: 6.4 }[size];
+    const clip = `bottle-${skill}-${size}`;
+    return (
+      <svg viewBox="0 0 24 24" className="h-full w-full">
+        <defs>
+          <clipPath id={clip}><path d={body} /></clipPath>
+          <radialGradient id={`${clip}-g`} cx="0.4" cy="0.35" r="0.75">
+            <stop offset="0" stopColor="#ffffff" stopOpacity="0.85" />
+            <stop offset="0.3" stopColor={liquid} />
+            <stop offset="1" stopColor={liquid} stopOpacity="0.75" />
+          </radialGradient>
+        </defs>
+        <ellipse cx="12" cy="21.4" rx="6" ry="1" fill="#000000" opacity="0.3" />
+        <circle cx="12" cy="15.6" r="7.5" fill={liquid} opacity="0.16" />
+        <path d={body} fill="#cfe6ee" opacity="0.22" />
+        <rect x="4" y={fillTop} width="16" height="10" fill={`url(#${clip}-g)`} clipPath={`url(#${clip})`} />
+        <path d={body} fill="none" stroke="#1c1814" strokeWidth="0.9" strokeLinejoin="round" />
+        <path d={`M9.4 ${fillTop + 1.4} Q9 ${fillTop + 4} 10 ${fillTop + 5.6}`} stroke="#ffffff" strokeWidth="0.8" strokeLinecap="round" fill="none" opacity="0.55" />
+        <rect x="10.2" y={neckTop - 2.4} width="3.6" height="2.6" rx="0.6" fill="#a8743c" stroke="#1c1814" strokeWidth="0.7" />
+      </svg>
+    );
+  };
+
   // Hand-drawn 24×24 SVG icons for the v0.2.1 livestock set — no external assets.
   const getSvg = (id: ItemId): React.ReactNode | null => {
     const gear = gearFor(id);
     if (gear) return gearSvg(gear.shape, gear.metal);
+    const bottle = ITEMS[id]?.bottle;
+    if (bottle) return bottleSvg(bottle.skill, bottle.size);
     switch (id) {
       case "logs": return logsSvg("#e2bd80", "#b8864a", "#6a4020");
       case "oak_logs": return logsSvg("#c8945a", "#8a5a2c", "#3e2410", "#5a9a3a");
