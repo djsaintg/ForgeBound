@@ -3,6 +3,53 @@
 All notable changes to **ForgeBound**. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project follows semver.
 
+## [0.4.2] — Gamma v0.4.2 · Prayer — 2026-10-26
+
+Something to spend Prayer on, a side panel you can arrange, and a minimap
+that matches the world.
+
+### Added
+
+- Prayer points: you can hold as many as your Prayer level. They're saved
+  with the game, and saves from before this update start full
+- Four combat blessings, switched on in the new Prayer tab. Each drains
+  prayer points while it's on, and when the points run out every blessing
+  turns off and the log says where to recharge:
+  - Stoneskin (level 1): foes' blows miss 15% more often. 1 point / 20s
+  - Ox's Might (level 4): +1 maximum hit. 1 point / 20s
+  - Mending Light (level 7): regain 1 HP every 6 seconds, the first way to
+    heal without eating. 1 point / 30s
+  - Clear Eye (level 10): +10% accuracy. 1 point / 20s
+- An altar in the north-east corner of Vale Square, beside the bank:
+  candles and a slow holy glow. Pray at it (left-click, or right-click →
+  Pray at) to refill your prayer points; the hero walks over and kneels
+- Prayer tab: a prayer-point bar with the current drain per minute, and
+  every blessing with its level, effect and an ON marker. Locked ones show
+  a 🔒
+- A ✦ prayer-point chip in the top bar beside ♥ HP, glowing while blessings
+  are on
+- Docked side panels: drag a tab (Skills, say) onto the bottom or top half
+  of a pane to dock it below or above, or onto another pane's tab bar to
+  group it there. Panes size to their contents, the bottom pane fills the
+  rest, and the bar between two panes resizes them (double-click to fit the
+  contents again). Right-click or long-press a tab to open it below, move
+  it to another pane, or reset the layout. The layout is remembered
+- Minimap map icons: the bank, Roka, the furnace, the anvil, the campfire,
+  the altar, Old Maro and each stretch of fishing water
+- The Prayer skill guide lists the blessings, and Old Maro mentions the
+  altar
+
+### Changed
+
+- The minimap is redrawn to match the world: textured grass, a paved
+  square, foam along the riverbanks, shaded mountain peaks, shaded tree
+  canopies, rocks showing their ore, and fences, huts and hay bales. It's
+  painted at high resolution, so zooming in stays sharp, and sits in a gold
+  bezel. Cows, hens and goblins are outlined dots
+- Your minimap marker is a long gold arrowhead that turns to point the way
+  you're heading, replacing the white square in a pulsing ring
+- Side-panel tab labels are tighter so four fit side by side
+
 ## [0.4.1] — Gamma v0.4.1 · Hands-On — 2026-10-26
 
 Interaction you notice on every click: right-click menus in the world, a

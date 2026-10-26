@@ -22,28 +22,6 @@ these up only if shimmer or flashes show up again.
 
 ---
 
-## v0.4.2 — Prayer (planned)
-
-Something to spend Prayer on: points, blessings and altars.
-
-### ✨ Prayer Points, Blessings & Altars
-- **Teaser:** Prayer grows teeth — an altar and blessings to call on in battle
-- Prayer is already a live skill, but only for burying bones; there is
-  nothing to spend it on yet. Add **Prayer points** (max = Prayer level) and
-  a small set of toggleable combat blessings that drain points over time:
-  e.g. +5% Defence (lvl 1), +5% Strength (lvl 4), faster HP regen (lvl 7),
-  +10% accuracy (lvl 10).
-- **Altars** recharge prayer points: a small shrine near spawn first (later:
-  offer bones at it for bonus XP, and more altars in the v0.5.0 regions).
-- A **Prayer tab** (or a strip in the Skills tab) listing blessings, their
-  level requirement and drain rate, with a prayer-point bar in the HUD.
-- Leave room for v0.4.3: a quest can unlock a stronger blessing or a second
-  altar (see the crypt idea under Quests).
-- Ties straight into combat — goblins and brigands become the natural
-  training loop alongside burying their bones.
-
----
-
 ## v0.4.3 — Quests (planned)
 
 The first real goals beyond grinding. Comes last in the v0.4.x run so quests
@@ -140,10 +118,12 @@ current valley becomes one region of many. First new zone, working name:
 - **Renderer & pathfinding: already fine.** Drawing only covers tiles on
   screen, and BFS over ~10k tiles is trivial. No real cost there.
 - **Minimap → radar.** Since v0.4.1 the minimap zooms (1×–4×) and follows
-  the hero when zoomed in, but its base layer is still the *entire* map at
-  3 px/tile (216×156 px today; ~375×240 at 5×). Drop the 1× "whole realm"
-  step (or cap it) so it's a true player-centred radar, keeping
-  click-to-travel; optionally add a full **World Map** overlay (key `M`).
+  the hero, and since v0.4.2 its terrain is pre-painted at 16 px/tile
+  (1,152×832 px today). At 5× the map that layer would be ~5,800×4,200 px,
+  too big for one canvas: paint it in tiles/chunks around the hero instead,
+  and drop the 1× "whole realm" step (or cap it) so it's a true
+  player-centred radar, keeping click-to-travel; optionally add a full
+  **World Map** overlay (key `M`).
 - **The 8-tile padding exists only so the full-map compass never covers
   playable ground.** With a radar it can shrink to a slim mountain rim.
 - **Region-based authoring.** `map.ts` hand-places everything with

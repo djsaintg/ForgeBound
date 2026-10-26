@@ -3,7 +3,7 @@
 **A single-player action-RPG that lives in one HTML file.**
 Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
-`v0.4.1 — Gamma Hands-On` · `100% offline` · `MIT licensed`
+`v0.4.2 — Gamma Prayer` · `100% offline` · `MIT licensed`
 
 ---
 
@@ -11,7 +11,19 @@ Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
 [![Sponsor](https://raw.githubusercontent.com/djsaintg/djsaintg/main/sponsor.svg)](https://buymeacoffee.com/djsaintg)
 
-## What's new in v0.4.1
+## What's new in v0.4.2
+
+- **Prayer with teeth** — prayer points and four combat blessings to call
+  on in a fight: Stoneskin, Ox's Might, Mending Light and Clear Eye
+- **An altar in Vale Square** — kneel there to refill your prayer points
+- **Arrange your side panel** — drag a tab below another to see your
+  inventory and skills (or prayer) at the same time; resize the panes,
+  and the layout is remembered
+- **A minimap that matches the world** — detailed terrain, map icons for
+  the bank, shops, stations and fishing spots, and a gold arrow showing
+  which way you're heading
+
+## v0.4.1 — Hands-On
 
 - **Right-click anything** — a menu of every action for whatever is under
   the cursor: Talk, Trade, Attack, Inspect, Take and more. Left-click still
@@ -215,6 +227,9 @@ quests and deeper systems arrive.
 | Drag an inventory item                      | Move it, deposit it in the bank, or drop it      |
 | Shift-click an inventory item               | Drop it                                          |
 | Click a skill                               | Open its guide — unlocks, tools, recipes         |
+| Click a blessing in the Prayer tab          | Switch it on or off (drains prayer points)       |
+| Left-click the altar                        | Pray — refill your prayer points                 |
+| Drag a side-panel tab onto another pane     | Dock it above / below, or group it there         |
 | Gear button in the side panel               | Engine settings — zoom, render mode, audio       |
 | `Esc`                                       | Close any panel, or put down a held item         |
 
@@ -271,7 +286,7 @@ reach the login screen only through their `- **Teaser:**` lines.
 - [x] v0.3.4 — resizable panels, action banner & HUD under the compass, ingot icons
 - [x] v0.4.0 — Visuals: jointed people & livestock, 4-way movement, per-job animations, gear icons, new rocks
 - [x] v0.4.1 — Hands-On: right-click menus, drag / select / use-on backpack, skill guides, minimap zoom
-- [ ] v0.4.2 — Prayer: prayer points, combat blessings, altars
+- [x] v0.4.2 — Prayer: prayer points, combat blessings, an altar, docked side panels, new minimap
 - [ ] v0.4.3 — Quests: gathering quests and a first Prayer quest
 - [ ] v0.4.4 — Sound & Score: original background music and a full sound-effects pass
 - [ ] v0.5.0 — a ~5× wider realm, the Wildwood, Fletching & Ranged
