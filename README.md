@@ -3,7 +3,7 @@
 **A single-player action-RPG that lives in one HTML file.**
 Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
-`v0.3.3 — Gamma Login Page Edits` · `100% offline` · `MIT licensed`
+`v0.3.4 — Gamma Resizable Windows & HUD` · `100% offline` · `MIT licensed`
 
 ---
 
@@ -11,7 +11,18 @@ Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
 [![Sponsor](https://raw.githubusercontent.com/djsaintg/djsaintg/main/sponsor.svg)](https://buymeacoffee.com/djsaintg)
 
-## What's new in v0.3.3
+## What's new in v0.3.4
+
+- **Resizable panels** — drag the side panel's edge or the bar above the
+  Adventurer's Log; sizes are remembered, double-click to reset
+- **Action banner** — what the hero is doing ("Chopping tree…") with a live
+  progress bar, sitting under the compass with the XP orbs
+- **Metal that looks like metal** — bronze, iron and steel bars are proper
+  ingots, and ore and bar icons fill their slots
+- **No early swings** — the chop / mine animation waits until the hero
+  arrives and the action actually starts
+
+## v0.3.3 — Login Page Edits
 
 - **Your name, for keeps** — the display name locks when the adventure
   begins; a smaller **Abandon & Restart** button (with a second-click
@@ -221,7 +232,7 @@ reach the login screen only through their `- **Teaser:**` lines.
 - [x] v0.3.1 — visual repairs: canvas flicker, camera jitter and click targeting
 - [x] v0.3.2 — gathering fixes: gather from any distance, distinct ore icons
 - [x] v0.3.3 — locked hero name, Abandon & Restart, self-writing builder's notes, fullscreen
-- [ ] v0.3.4 — resizable Backpack & Log windows, HUD placement under the compass
+- [x] v0.3.4 — resizable panels, action banner & HUD under the compass, ingot icons
 - [ ] v0.4.0 — gathering quests, right-click action menus, Prayer blessings
 - [ ] v0.5.0 — a ~5× wider realm, the Wildwood, Fletching & Ranged
 - [ ] v0.6.0 — the Vale square rebuilt as a proper village

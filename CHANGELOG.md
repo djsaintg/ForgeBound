@@ -3,6 +3,44 @@
 All notable changes to **ForgeBound**. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project follows semver.
 
+## [0.3.4] — Gamma v0.3.4 · Resizable Windows & HUD — 2026-10-25
+
+Make the screen your own: panels that stretch, a HUD that knows its place,
+and bars that look like metal.
+
+### Added
+
+- Resizable panels: drag the bar on the side panel's left edge to widen the
+  Backpack / Skills / Gear panel, or the bar above the Adventurer's Log to
+  make it taller. Sizes are remembered; double-click a bar to reset it. The
+  map always keeps at least about half the screen
+- Action banner under the compass: "Chopping tree…", "Mining copper
+  rocks…", "Smelting bronze bar…", "Fighting the Goblin Warrior…" and so on,
+  with a progress bar that fills with the action timer. While walking over it
+  reads "Heading to the tree…"
+
+### Changed
+
+- A wider side panel shows the backpack in more columns instead of
+  stretching each slot
+- Bronze, iron and steel bars are hand-drawn SVG ingots in their metal's
+  colours, replacing the orange square (🟧), white square (⬜) and bolt (🔩)
+  emojis
+- XP orbs moved from the top-left corner to a column under the compass,
+  below the action banner, so the compass, banner and orbs never overlap
+- Ore and bar icons are drawn larger, filling their backpack slot like the
+  other items
+
+### Fixed
+
+- The hero no longer swings an axe or pickaxe (or kicks up sawdust and ore
+  sparks) while still walking to a tree or rock. The work animation now starts
+  when the hero arrives and the action timer begins. The same applies to
+  chasing a foe
+- The world canvas only resizes when its size really changes, and repaints
+  immediately when it does, so resizing panels or opening the mobile drawer
+  can't flash a blank frame
+
 ## [0.3.3] — Gamma v0.3.3 · Login Page Edits — 2026-10-25
 
 A new front door: your hero's name is yours for keeps, the builder's notes

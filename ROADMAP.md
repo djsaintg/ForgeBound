@@ -15,50 +15,10 @@ forged", not promises).
 Leftovers from the v0.3.1 flicker hunt (shipped — see `CHANGELOG.md`). Pick
 these up only if shimmer or flashes show up again.
 
-- **Canvas resets:** assigning `canvas.width/height` wipes the canvas. The
-  `ResizeObserver` in `WorldCanvas.tsx` does this whenever the viewport box
-  changes (panels/modals opening, mobile drawer). Only resize when the
-  computed size actually differs, and redraw immediately after.
 - **Sub-pixel shimmering:** snap the final camera offset to whole *device*
   pixels (account for `devicePixelRatio`) after zoom scaling.
 - **Render guard:** wrap each entity draw so one bad sprite can't throw and
   abort the rest of the frame (how the v0.3.1 flicker hid for so long).
-
----
-
-## v0.3.4 — Resizable Windows & HUD (planned)
-
-Carried over from v0.3.3, which shipped the login rework, self-writing
-builder's notes and fullscreen play (see `CHANGELOG.md`).
-
-### 📐 Resizable Interface Windows
-- **Teaser:** Drag-to-resize Backpack and Adventurer's Log windows
-- Restore the functionality allowing players to drag the corners of the
-  **Backpack** and **Adventurer's Log** to resize them.
-- Note: no resize/drag code exists in the current tree — this is a rebuild,
-  not a re-enable. The side panel is a fixed `w-[290px]` and the log a fixed
-  `h-[158px]` in `App.tsx`.
-- Ensure the layout remains "Gamma-truthful": transparent glass styling that
-  allows the map to show through the background.
-
-### 🧭 HUD Occlusion Fix
-- **Teaser:** XP orbs and action banner tucked neatly beneath the compass
-- Move the **Active Action Banner** ("Chopping tree...") and **XP Orbs** further
-  down the screen.
-- **Target:** Anchor them at `top: 224px` so they appear cleanly underneath
-  the Circular Radar Compass instead of being hidden behind it.
-- Note: in the current tree there is **no Active Action Banner** component,
-  and the XP orbs sit top-*left* (`XpOrbs.tsx`) while the compass sits
-  top-*right* (`App.tsx`), so they only collide on narrow viewports. Decide
-  whether to (re)build the action banner first, then place both under the
-  compass.
-
-### ⛰️ Mountain Expansion
-- **Teaser:** Mountain ranges ready to be pushed back as the realm grows
-- Refine the **Mountain Range** border visuals to support "pushing" them back
-  as the core world grows in future updates.
-- Superseded in scope by the v0.5.0 world expansion (~5× map). Here, only do
-  visual work that survives that move; the engine groundwork lives in v0.5.0.
 
 ---
 
@@ -158,6 +118,8 @@ current valley becomes one region of many. First new zone, working name:
   grid and migrate old saves by that offset (pattern already exists in
   `loadGame`: the pre-expansion `g.x < 8` shift). Bump `SAVE_VERSION`.
 - Spawn lists (cows, hens, goblins) move into their regions too.
+- **Mountain ring visuals** (carried over from v0.3.x): refine the range art
+  so the border reads well wherever it ends up once it's pushed back.
 
 **Content (the real work):**
 - 5× the land needs 5× the reasons to walk it, or it feels empty. Plan
