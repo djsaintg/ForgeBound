@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { GameApi } from "../game/useGame";
 import { clampCam, render, tileSize } from "../game/render";
 import type { GameState } from "../game/types";
+import { dirFrom, type Dir } from "../game/figure";
 
 // Cheap FNV-1a hash over the state the React panels display. Runs every
 // frame, so it walks the fields directly instead of JSON.stringify-ing them
@@ -36,8 +37,8 @@ export function WorldCanvas({ api }: { api: GameApi }) {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const camRef = useRef({ x: -1, y: -1 });
     const dispRef = useRef({ x: -1, y: 0 });
-    const facingRef = useRef(1);
-    const lastXRef = useRef(0);
+    const dirRef = useRef<Dir>("down");
+    const lastPosRef = useRef({ x: 0, y: 0 });
     const clicksRef = useRef<{ x: number; y: number; t0: number }[]>([]);
     const lastSigRef = useRef(0);
 
@@ -75,16 +76,18 @@ export function WorldCanvas({ api }: { api: GameApi }) {
             if (dispRef.current.x < 0) {
                 dispRef.current = { x: g.x, y: g.y };
                 camRef.current = { x: g.x * effTile + effTile / 2, y: g.y * effTile + effTile / 2 };
-                lastXRef.current = g.x;
+                lastPosRef.current = { x: g.x, y: g.y };
             }
 
             // smooth sub-tile follow
             const k = Math.min(1, dt / 130);
             dispRef.current.x += (g.x - dispRef.current.x) * k;
             dispRef.current.y += (g.y - dispRef.current.y) * k;
-            if (g.x !== lastXRef.current) {
-                facingRef.current = g.x > lastXRef.current ? 1 : -1;
-                lastXRef.current = g.x;
+            // Face the way the last step went: up, down, left or right
+            const last = lastPosRef.current;
+            if (g.x !== last.x || g.y !== last.y) {
+                dirRef.current = dirFrom(g.x - last.x, g.y - last.y, dirRef.current);
+                lastPosRef.current = { x: g.x, y: g.y };
             }
 
             const target = clampCam(
@@ -99,7 +102,7 @@ export function WorldCanvas({ api }: { api: GameApi }) {
             render(ctx, g, camRef.current, clicksRef.current, w, h, t, {
                 dx: dispRef.current.x,
                 dy: dispRef.current.y,
-                facing: facingRef.current,
+                dir: dirRef.current,
             });
         };
 

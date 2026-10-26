@@ -19,13 +19,15 @@ const DIRS = [
 /**
  * BFS to a target tile. If the target itself is not walkable (a rock, tree,
  * NPC...), finds the shortest path to any walkable tile adjacent to it.
+ * `beside` always stops next to the target, for foes standing on open ground.
  * Returns the path excluding the start tile, or null if unreachable.
  */
-export function findPath(sx: number, sy: number, tx: number, ty: number): Pt[] | null {
-  if (sx === tx && sy === ty) return [];
+export function findPath(sx: number, sy: number, tx: number, ty: number, beside = false): Pt[] | null {
+  if (beside && adjacentTo(sx, sy, tx, ty) && !(sx === tx && sy === ty)) return [];
+  if (sx === tx && sy === ty && !beside) return [];
   const key = (x: number, y: number) => y * MAP_W + x;
   const targets = new Set<number>();
-  if (walkable(tx, ty)) {
+  if (walkable(tx, ty) && !beside) {
     targets.add(key(tx, ty));
   } else {
     for (const d of DIRS) {

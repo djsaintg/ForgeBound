@@ -154,6 +154,45 @@ function Skills({ g }: { g: GameState }) {
   );
 }
 
+/** Choose whether melee hits train Attack, Strength or both (never neither). */
+function CombatTraining({ api, g }: { api: GameApi; g: GameState }) {
+  const xp = g.combatXp;
+  const options: ["attack" | "strength", string, string][] = [
+    ["attack", "Attack", "Accuracy: land hits more often"],
+    ["strength", "Strength", "Power: hit harder"],
+  ];
+  return (
+    <div className="mt-1 rounded-sm border border-[#241c12] bg-[#0f0b08] px-2.5 py-2">
+      <div className="text-[10px] uppercase tracking-[0.16em] text-[#8a7a52]">Combat training</div>
+      <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+        {options.map(([id, label, hint]) => {
+          const on = xp[id];
+          const locked = on && !xp[id === "attack" ? "strength" : "attack"];
+          return (
+            <button
+              key={id}
+              onClick={() => api.toggleCombatXp(id)}
+              aria-pressed={on}
+              title={locked ? `${label} is the only one on. At least one must stay selected.` : `${hint}. Click to turn ${on ? "off" : "on"}.`}
+              className={`rounded-sm border px-2 py-1.5 text-left transition-all ${
+                on
+                  ? "border-[#d8b25c] bg-gradient-to-b from-[#3a2f14] to-[#241c10] text-[#f0c858]"
+                  : "border-[#2a2115] bg-[#120d08] text-[#5a4a2c] hover:border-[#6a5428]"
+              } ${locked ? "cursor-not-allowed" : ""}`}
+            >
+              <span className="block text-[12px] font-bold">{on ? "✔" : "○"} {label}</span>
+              <span className="block text-[9.5px] leading-tight opacity-80">{locked ? "must stay on" : on ? "training" : "off"}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="mt-1.5 text-[10px] leading-snug text-[#6a5a3a]">
+        Each hit's XP is shared between the skills switched on, so one alone trains twice as fast. Defence grows from the blows you take. Hitpoints from every hit.
+      </div>
+    </div>
+  );
+}
+
 function Gear({ api, g }: { api: GameApi; g: GameState }) {
   const slots: ToolSlot[] = ["weapon", "armor", "axe", "pick", "rod"];
   return (
@@ -183,6 +222,7 @@ function Gear({ api, g }: { api: GameApi; g: GameState }) {
           </button>
         );
       })}
+      <CombatTraining api={api} g={g} />
       <div className="mt-1 rounded-sm border border-[#241c12] bg-[#0f0b08] px-2.5 py-2 text-[10.5px] leading-snug text-[#6a5a3a]">
         Better tools work faster. Bronze ×1, iron ×1.18, steel ×1.39, mithril ×1.67.
       </div>

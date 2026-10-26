@@ -2,6 +2,7 @@ import React from "react";
 import type { ItemId } from "../game/types";
 import { ITEMS } from "../game/data";
 import { ORE_COLORS } from "../game/render";
+import { GEAR, GEAR_OUTLINE, gearColor, gearFor, type GearShape, type Metal } from "../game/gear";
 
 interface Props {
   item: ItemId;
@@ -88,9 +89,76 @@ export const ItemIcon: React.FC<Props> = ({ item, size = "md", count }) => {
     </svg>
   );
 
+  // Tools and weapons: the same shapes the hero holds in the world, tilted 45°
+  // like a backpack icon and tinted per metal so tiers read at a glance.
+  const gearSvg = (shape: GearShape, metal: Metal) => {
+    const def = GEAR[shape];
+    const k = def.iconScale;
+    const tf = def.upright ? undefined : `translate(12 12) rotate(45) scale(${k}) translate(-12 -12)`;
+    return (
+      <svg viewBox="0 0 24 24" className="h-full w-full">
+        <g transform={tf} strokeLinejoin="round" strokeLinecap="round">
+          {def.parts.map((p, i) => (
+            <React.Fragment key={i}>
+              {p.fill && (
+                <path d={p.d} fill={gearColor(p.fill, metal)} opacity={p.op}
+                  stroke={p.bare ? undefined : GEAR_OUTLINE} strokeWidth={p.bare ? undefined : 0.8 / k} />
+              )}
+              {p.stroke && <path d={p.d} fill="none" stroke={gearColor(p.stroke, metal)} strokeWidth={p.w ?? 0.6} opacity={p.op} />}
+            </React.Fragment>
+          ))}
+        </g>
+      </svg>
+    );
+  };
+
+  // Three logs stacked end-on: cut faces with growth rings, bark rims.
+  const logsSvg = (face: string, ring: string, bark: string, leaf?: string) => (
+    <svg viewBox="0 0 24 24" className="h-full w-full">
+      <ellipse cx="12" cy="21" rx="9.5" ry="1.4" fill="#000000" opacity="0.3" />
+      {([[7.4, 15.6], [16.6, 15.6], [12, 8.2]] as const).map(([x, y], i) => (
+        <g key={i}>
+          <circle cx={x} cy={y} r="4.4" fill={face} stroke={bark} strokeWidth="1.7" />
+          <circle cx={x} cy={y} r="2.5" fill="none" stroke={ring} strokeWidth="0.6" />
+          <circle cx={x} cy={y} r="0.8" fill={ring} />
+          <path d={`M${x - 2.6} ${y - 1.6} Q${x - 1.6} ${y - 2.9} ${x} ${y - 3.1}`} fill="none" stroke="#ffffff" strokeWidth="0.6" strokeLinecap="round" opacity="0.4" />
+        </g>
+      ))}
+      {leaf && <path d="M15.6 4.6 Q18.6 1.8 21 3 Q20 6.4 16.2 6.2 Z M15.6 4.6 L19.4 3.4" fill={leaf} stroke="#1f3b18" strokeWidth="0.5" strokeLinejoin="round" />}
+    </svg>
+  );
+
+  // A ribeye-style cut: fat rim along the top, a round bone, marbled meat.
+  // Raw is red with white marbling; cooked is seared brown with grill marks.
+  const steakSvg = (cooked: boolean) => {
+    const meat = cooked ? "#8a4a1e" : "#c0302c";
+    const edge = cooked ? "#4e2610" : "#7a1a18";
+    const fat = cooked ? "#d8a860" : "#f4e2cc";
+    const cut = "M3.6 12.4 Q3 7.4 7.6 5.6 Q12 4 16.4 5.4 Q21 7 20.8 12 Q20.6 17 16 18.6 Q11 20.2 7 18.4 Q3.8 16.8 3.6 12.4 Z";
+    return (
+      <svg viewBox="0 0 24 24" className="h-full w-full">
+        <ellipse cx="12.2" cy="20.4" rx="8.4" ry="1.3" fill="#000000" opacity="0.3" />
+        <path d={cut} fill={fat} stroke={edge} strokeWidth="1" strokeLinejoin="round" />
+        <path d="M5.4 12.6 Q5 8.8 8.4 7.4 Q12 6.2 15.8 7.2 Q19.2 8.4 19 12.2 Q18.8 16 15.2 17.2 Q11 18.4 7.8 17 Q5.6 15.6 5.4 12.6 Z" fill={meat} />
+        {cooked ? (
+          <path d="M7.6 9.6 L11.4 15.4 M10.8 8.4 L14.8 14.6 M14.2 8 L17.6 13.2" stroke="#3a1c0a" strokeWidth="1.3" strokeLinecap="round" opacity="0.85" />
+        ) : (
+          <path d="M7 11.4 Q9 10.6 10.6 12 Q12 13.2 13.8 12.2 M8.4 14.8 Q10.4 14 12 15.2 M14.6 9.6 Q16.2 9.2 17.4 10.4 M15.4 14.2 Q16.6 13.6 17.6 14.6" stroke="#f8d8d0" strokeWidth="0.7" strokeLinecap="round" fill="none" opacity="0.8" />
+        )}
+        <circle cx="9.4" cy="10.2" r="2.1" fill="#f1e6d0" stroke={edge} strokeWidth="0.6" />
+        <circle cx="9.4" cy="10.2" r="0.8" fill={cooked ? "#a0703a" : "#d88a7a"} />
+        <path d="M8 6.4 Q12 5.2 16 6.2" stroke="#ffffff" strokeWidth="0.7" strokeLinecap="round" fill="none" opacity="0.45" />
+      </svg>
+    );
+  };
+
   // Hand-drawn 24×24 SVG icons for the v0.2.1 livestock set — no external assets.
   const getSvg = (id: ItemId): React.ReactNode | null => {
+    const gear = gearFor(id);
+    if (gear) return gearSvg(gear.shape, gear.metal);
     switch (id) {
+      case "logs": return logsSvg("#e2bd80", "#b8864a", "#6a4020");
+      case "oak_logs": return logsSvg("#c8945a", "#8a5a2c", "#3e2410", "#5a9a3a");
       case "copper_ore": return oreSvg(ORE_COLORS.R);
       case "tin_ore": return oreSvg(ORE_COLORS.S);
       case "iron_ore": return oreSvg(ORE_COLORS.I);
@@ -115,22 +183,8 @@ export const ItemIcon: React.FC<Props> = ({ item, size = "md", count }) => {
             <circle cx="5" cy="19" r="1.8" fill="#cbd5e1" /><circle cx="7.5" cy="20" r="1.8" fill="#cbd5e1" />
           </svg>
         );
-      case "raw_beef":
-        return (
-          <svg viewBox="0 0 24 24" className="h-full w-full">
-            <path d="M4 9 Q4 5 9 5 L17 5 Q21 5 20.5 10 Q21 16 16 18 L9 19 Q4 19 4 14 Z" fill="#b91c1c" stroke="#7f1d1d" strokeWidth="1" />
-            <path d="M5.5 9.5 Q6 6.5 10 6.5 L16 6.5" fill="none" stroke="#fecaca" strokeWidth="2.2" strokeLinecap="round" />
-            <circle cx="14" cy="13" r="1.4" fill="#fecaca" opacity="0.8" />
-          </svg>
-        );
-      case "cooked_beef":
-        return (
-          <svg viewBox="0 0 24 24" className="h-full w-full">
-            <path d="M4 9 Q4 5 9 5 L17 5 Q21 5 20.5 10 Q21 16 16 18 L9 19 Q4 19 4 14 Z" fill="#92400e" stroke="#5b2c0a" strokeWidth="1" />
-            <path d="M7 9 L10 15 M11.5 8 L14.5 15 M16 8 L18.5 13" stroke="#451a03" strokeWidth="1.6" strokeLinecap="round" />
-            <path d="M5.5 9 Q6 6.5 10 6.5" fill="none" stroke="#fbbf24" strokeWidth="1.4" strokeLinecap="round" opacity="0.7" />
-          </svg>
-        );
+      case "raw_beef": return steakSvg(false);
+      case "cooked_beef": return steakSvg(true);
       case "raw_chicken":
         return (
           <svg viewBox="0 0 24 24" className="h-full w-full">
@@ -138,6 +192,16 @@ export const ItemIcon: React.FC<Props> = ({ item, size = "md", count }) => {
             <path d="M7.5 13 L5 18" stroke="#f9a8d4" strokeWidth="2.4" strokeLinecap="round" />
             <circle cx="4.5" cy="19" r="1.6" fill="#fdf2f8" /><circle cx="6.2" cy="19.6" r="1.6" fill="#fdf2f8" />
             <circle cx="14.5" cy="10" r="1.2" fill="#fdf2f8" opacity="0.9" />
+          </svg>
+        );
+      case "cooked_chicken":
+        return (
+          <svg viewBox="0 0 24 24" className="h-full w-full">
+            <path d="M8 6 Q15 4 18 9 Q20 14 14 16 Q9 17 7.5 13 Z" fill="#b8682a" stroke="#6b3410" strokeWidth="1" />
+            <path d="M9.6 7.4 Q14.4 5.8 16.6 9.2" fill="none" stroke="#e8a050" strokeWidth="1.4" strokeLinecap="round" opacity="0.85" />
+            <path d="M11 12.6 L13 11.4 M13.6 13.6 L15.6 12.2" stroke="#7a3c14" strokeWidth="0.9" strokeLinecap="round" />
+            <path d="M7.5 13 L5 18" stroke="#f5ecd8" strokeWidth="2.4" strokeLinecap="round" />
+            <circle cx="4.5" cy="19" r="1.6" fill="#f5ecd8" /><circle cx="6.2" cy="19.6" r="1.6" fill="#f5ecd8" />
           </svg>
         );
       case "feathers":

@@ -79,6 +79,19 @@ export const sfx = {
     tone(1240, 0.07, { type: "square", vol: 0.05 });
     tone(1660, 0.12, { type: "square", vol: 0.05, delay: 0.06 });
   },
+  // Per-blow impacts, timed to the v0.4.0 work animations
+  chop() {
+    noise(0.07, 0.07, 0, 700);
+    tone(130, 0.08, { type: "triangle", vol: 0.06, glide: 90 });
+  },
+  clink() {
+    tone(1900, 0.06, { type: "square", vol: 0.025 });
+    noise(0.04, 0.05, 0, 4200);
+  },
+  tap() {
+    tone(1480, 0.09, { type: "triangle", vol: 0.05 });
+    tone(2960, 0.05, { type: "sine", vol: 0.02 });
+  },
   smith() {
     noise(0.05, 0.09, 0, 3600);
     tone(220, 0.12, { type: "sawtooth", vol: 0.05 });

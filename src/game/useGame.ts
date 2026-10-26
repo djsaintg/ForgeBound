@@ -25,6 +25,7 @@ import { COW_SPAWNS, CHICKEN_SPAWNS, GOBLIN_SPAWNS, MAP_H, MAP_W, SPAWN, objAt, 
 import { adjacentTo, findPath } from "./pathfinding";
 import { MAX_XP, SKILLS, SKILL_BY_ID, fmt, levelForXp } from "./xp";
 import { sfx } from "./audio";
+import { emote, jobOf, strikesDone } from "./anim";
 
 export const SAVE_KEY = "forgebound-save-v1";
 const STEP_MS = 168;
@@ -97,6 +98,7 @@ export function freshState(name: string): GameState {
     counters: { gathered: 0, made: 0, kills: 0 },
     zoom: 2.2,
     graphicsMode: "64bit",
+    combatXp: { attack: true, strength: true },
   };
 }
 
@@ -117,6 +119,7 @@ export function saveGame(g: GameState): boolean {
       zoom: g.zoom,
       graphicsMode: g.graphicsMode,
       groundItems: g.groundItems,
+      combatXp: g.combatXp,
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
     return true;
@@ -148,6 +151,10 @@ export function loadGame(): GameState | null {
     if (typeof p.zoom === "number") g.zoom = p.zoom;
     if (p.graphicsMode) g.graphicsMode = p.graphicsMode;
     if (Array.isArray(p.groundItems)) g.groundItems = p.groundItems;
+    // Older saves have no choice stored; a broken one with both off trains both
+    const cx = p.combatXp ?? {};
+    g.combatXp = { attack: cx.attack !== false, strength: cx.strength !== false };
+    if (!g.combatXp.attack && !g.combatXp.strength) g.combatXp = { attack: true, strength: true };
     return g;
   } catch {
     return null;
@@ -337,7 +344,7 @@ export function useGame() {
         }
         c.moo = performance.now() + 1000;
         sfx.moo();
-        const p = findPath(gg.x, gg.y, x, y);
+        const p = findPath(gg.x, gg.y, x, y, true);
         if (p) gg.path = p;
         gg.action = { kind: "combat", targetKind: "cow", targetId: c.id, progress: 0, cycle: Math.round(1800 * swingMul(toolTier("weapon"))) };
         chat("info", `${gg.name} raises their weapon and attacks the pasture cow! Moo!`);
@@ -355,7 +362,7 @@ export function useGame() {
           }
           ch.cluck = performance.now() + 1000;
           sfx.click();
-          const p = findPath(gg.x, gg.y, x, y);
+          const p = findPath(gg.x, gg.y, x, y, true);
           if (p) gg.path = p;
           gg.action = { kind: "combat", targetKind: "chicken", targetId: ch.id, progress: 0, cycle: Math.round(1600 * swingMul(toolTier("weapon"))) };
           chat("info", `${gg.name} attacks the coop hen! "Cluck cluck!" 🐔`);
@@ -374,7 +381,7 @@ export function useGame() {
           }
           gb.grunt = performance.now() + 1200;
           sfx.swing();
-          const p = findPath(gg.x, gg.y, x, y);
+          const p = findPath(gg.x, gg.y, x, y, true);
           if (p) gg.path = p;
           gg.action = { kind: "combat", targetKind: "goblin", targetId: gb.id, progress: 0, cycle: Math.round(2000 * swingMul(toolTier("weapon"))) };
           const taunts = [
@@ -602,7 +609,15 @@ export function useGame() {
     gg.counters.made++;
     sfx.smith();
     chat("info", `${gg.name} crafted ${ITEMS[r.output]?.name.toLowerCase() || r.output} · +${r.xp} XP`);
-    a.progress = 0;
+    // Stop as soon as the last set of materials is used, rather than swinging
+    // one more empty cycle at the furnace or anvil before noticing.
+    const more = Object.entries(r.inputs).every(([id, n]) => countItem(id as ItemId) >= (n ?? 0));
+    if (!more) {
+      chat("info", `${gg.name} has run out of materials for that.`);
+      gg.action = null;
+    } else {
+      a.progress = 0;
+    }
   };
 
   // --- RS3 Combat Round Processing ---
@@ -627,8 +642,9 @@ export function useGame() {
     }
 
     // Check if hero is still adjacent
-    if (!adjacentTo(gg.x, gg.y, target.x, target.y)) {
-      const p = findPath(gg.x, gg.y, target.x, target.y);
+    const tx = Math.round(target.x), ty = Math.round(target.y);
+    if (!adjacentTo(gg.x, gg.y, tx, ty) || (gg.x === tx && gg.y === ty)) {
+      const p = findPath(gg.x, gg.y, tx, ty, true);
       if (p && p.length > 0) {
         gg.path = p;
         return; // move first before hitting
@@ -648,9 +664,12 @@ export function useGame() {
       target.hit = now; // drives the white hit-flash in the renderer
       sfx.hit();
       addFloat(`-${hitDmg}`, "rgb(255,80,80)", target.x - gg.x, target.y - gg.y);
-      // Grant Combat XP
-      gainXp("attack", hitDmg * 4 + 8);
-      gainXp("strength", hitDmg * 4 + 8);
+      // Grant Combat XP: the same total per hit, shared between the chosen
+      // skills, so training one alone is never slower than training both
+      const share = hitDmg * 4 + 8;
+      const { attack, strength } = gg.combatXp;
+      if (attack) gainXp("attack", strength ? share : share * 2);
+      if (strength) gainXp("strength", attack ? share : share * 2);
       gainXp("hitpoints", Math.round(hitDmg * 2.5 + 4));
       chat("info", `You strike the ${name} for ${hitDmg} damage! (${target.hp}/${target.maxHp} HP remaining)`);
     } else {
@@ -779,6 +798,14 @@ export function useGame() {
 
     // action progression
     if (gg.action) {
+      // Axe, pick and hammer blows sound as each one lands in the animation
+      const job = gg.path.length ? null : jobOf(gg);
+      if (job === "chop" || job === "mine" || job === "smith") {
+        const a = gg.action;
+        if (strikesDone(a.progress + dt, a.cycle, job) > strikesDone(a.progress, a.cycle, job)) {
+          if (job === "chop") sfx.chop(); else if (job === "mine") sfx.clink(); else sfx.tap();
+        }
+      }
       if (gg.action.kind === "combat") {
         gg.action.progress += dt;
         if (gg.action.progress >= gg.action.cycle) {
@@ -798,6 +825,9 @@ export function useGame() {
       }
     }
 
+    const inFight = (kind: "cow" | "chicken" | "goblin", id: number) =>
+      gg.action?.kind === "combat" && gg.action.targetKind === kind && gg.action.targetId === id;
+
     // Cows wander & respawn
     for (const c of gg.cows) {
       if (c.hp <= 0) {
@@ -808,12 +838,13 @@ export function useGame() {
       if (c.hp < c.maxHp && !(gg.action?.kind === "combat" && gg.action.targetKind === "cow" && gg.action.targetId === c.id)) {
         c.hp = Math.min(c.maxHp, c.hp + dt / 1500);
       }
-      if (c.x === c.dx && c.y === c.dy && now > c.nextMove) {
+      // A foe in a fight holds its ground, and nothing wanders onto the hero
+      if (c.x === c.dx && c.y === c.dy && now > c.nextMove && !inFight("cow", c.id)) {
         if (Math.random() < 0.05) {
           const dirs = [{ x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }];
           const d = dirs[Math.floor(Math.random() * dirs.length)];
           const nx = c.x + d.x, ny = c.y + d.y;
-          if (nx >= 26 && nx <= 36 && ny >= 12 && ny <= 17 && walkable(nx, ny)) {
+          if (nx >= 26 && nx <= 36 && ny >= 12 && ny <= 17 && walkable(nx, ny) && !(nx === gg.x && ny === gg.y)) {
             c.dx = nx; c.dy = ny; c.nextMove = now + 4000 + Math.random() * 6000;
           }
         }
@@ -844,12 +875,12 @@ export function useGame() {
           ch.nextEgg = now + 22000 + Math.random() * 18000;
         }
 
-        if (ch.x === ch.dx && ch.y === ch.dy && now > ch.nextMove) {
+        if (ch.x === ch.dx && ch.y === ch.dy && now > ch.nextMove && !inFight("chicken", ch.id)) {
           if (Math.random() < 0.08) {
             const dirs = [{ x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }];
             const d = dirs[Math.floor(Math.random() * dirs.length)];
             const nx = ch.x + d.x, ny = ch.y + d.y;
-            if (nx >= 41 && nx <= 45 && ny >= 26 && ny <= 29 && walkable(nx, ny)) {
+            if (nx >= 41 && nx <= 45 && ny >= 26 && ny <= 29 && walkable(nx, ny) && !(nx === gg.x && ny === gg.y)) {
               ch.dx = nx; ch.dy = ny; ch.nextMove = now + 2500 + Math.random() * 4000;
             }
           }
@@ -873,12 +904,12 @@ export function useGame() {
         if (gb.hp < gb.maxHp && !(gg.action?.kind === "combat" && gg.action.targetKind === "goblin" && gg.action.targetId === gb.id)) {
           gb.hp = Math.min(gb.maxHp, gb.hp + dt / 1800);
         }
-        if (gb.x === gb.dx && gb.y === gb.dy && now > gb.nextMove) {
+        if (gb.x === gb.dx && gb.y === gb.dy && now > gb.nextMove && !inFight("goblin", gb.id)) {
           if (Math.random() < 0.06) {
             const dirs = [{ x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }];
             const d = dirs[Math.floor(Math.random() * dirs.length)];
             const nx = gb.x + d.x, ny = gb.y + d.y;
-            if (nx >= 44 && nx <= 59 && ny >= 11 && ny <= 17 && walkable(nx, ny)) {
+            if (nx >= 44 && nx <= 59 && ny >= 11 && ny <= 17 && walkable(nx, ny) && !(nx === gg.x && ny === gg.y)) {
               gb.dx = nx; gb.dy = ny; gb.nextMove = now + 3500 + Math.random() * 5000;
             }
           }
@@ -908,6 +939,7 @@ export function useGame() {
       gg.inv[idx] = s.n > 1 ? { item: s.item, n: s.n - 1 } : null;
       gainXp("prayer", 25);
       sfx.bury();
+      emote.buryAt = performance.now();
       chat("sys", `${gg.name} buried the bones in reverent prayer · +25 Prayer XP`);
       bump();
       return;
@@ -1061,6 +1093,22 @@ export function useGame() {
     bump();
   };
 
+  /** Toggle melee XP into Attack or Strength; the last one on can't be switched off. */
+  const toggleCombatXp = (skill: "attack" | "strength") => {
+    const gg = g();
+    const next = { ...gg.combatXp, [skill]: !gg.combatXp[skill] };
+    if (!next.attack && !next.strength) {
+      chat("err", "At least one of Attack or Strength must stay on to earn combat XP.");
+      sfx.error();
+      return;
+    }
+    gg.combatXp = next;
+    const on = [next.attack && "Attack", next.strength && "Strength"].filter(Boolean).join(" and ");
+    chat("info", `Melee hits now train ${on}.`);
+    sfx.click();
+    bump();
+  };
+
   const unequip = (slot: "weapon" | "axe" | "pick" | "rod" | "armor") => {
     const gg = g();
     const id = gg.equipped[slot];
@@ -1184,6 +1232,7 @@ export function useGame() {
       buy,
       sellSlot,
       unequip,
+      toggleCombatXp,
       dismissLevelUp,
       closeOverlays,
       openSettings,

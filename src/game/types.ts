@@ -195,4 +195,7 @@ export interface GameState {
   // Gamma v0.3.0 Enhancements
   zoom: number;
   graphicsMode: GraphicsMode;
+  /** Which offensive skills melee hits train. At least one is always on;
+   *  Defence is earned only from blows taken. */
+  combatXp: { attack: boolean; strength: boolean };
 }
