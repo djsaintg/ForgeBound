@@ -1115,7 +1115,8 @@ function drawPlayer64(
 ) {
   const cx = px + s / 2;
   const isMoving = g.path.length > 0;
-  const isWorking = g.action !== null;
+  // The action timer only runs once the hero has arrived, so the swing waits too.
+  const isWorking = g.action !== null && !isMoving;
 
   // ---- 6-frame walk cycle -------------------------------------------------
   // One full cycle takes ~500ms; we sample 6 keyframes and interpolate.
@@ -1411,7 +1412,7 @@ export function render(
   }
 
   // 2b. Ambient work particles: sawdust while felling trees, ore sparks while mining
-  if (is64 && g.action && g.action.kind === "gather") {
+  if (is64 && g.action && g.action.kind === "gather" && g.path.length === 0) {
     const a = g.action;
     if ((a.res === "tree" || a.res === "oak") && Math.random() < 0.35) {
       spawnParticles(a.x * effTile - sx + effTile / 2, a.y * effTile - sy + effTile * 0.55, 1, "#d9be82", 0.5);
