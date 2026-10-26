@@ -3,7 +3,7 @@
 **A single-player action-RPG that lives in one HTML file.**
 Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
-`v0.3.4 — Gamma Resizable Windows & HUD` · `100% offline` · `MIT licensed`
+`v0.4.0 — Gamma Visuals` · `100% offline` · `MIT licensed`
 
 ---
 
@@ -11,7 +11,23 @@ Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
 [![Sponsor](https://raw.githubusercontent.com/djsaintg/djsaintg/main/sponsor.svg)](https://buymeacoffee.com/djsaintg)
 
-## What's new in v0.3.4
+## What's new in v0.4.0
+
+- **People and animals with real bodies** — the hero, goblins and
+  townsfolk have heads, shoulders, elbows and knees and walk in all four
+  directions; cows and hens walk, graze and peck like the real thing
+- **Every job moves differently** — chop, mine, hammer, smelt, cook, cast,
+  stab, slash and punch each have their own motion, with sparks, sawdust
+  and sounds landing on the blow
+- **The right tool in hand** — axe, pickaxe, hammer, rod, net or pan, tinted
+  by its metal, and the hero turns to face the work
+- **Hand-drawn gear icons** — every sword, dagger, axe, pickaxe, the
+  platebody and the fishing rod, plus cooked chicken and log piles
+- **Rocks that look like rock** — faceted boulders with ore set into them
+- **Choose your combat training** — switch melee XP between Attack,
+  Strength or both in the Gear tab; Defence still grows from blows taken
+
+## v0.3.4 — Resizable Windows & HUD
 
 - **Resizable panels** — drag the side panel's edge or the bar above the
   Adventurer's Log; sizes are remembered, double-click to reset
@@ -233,14 +249,14 @@ reach the login screen only through their `- **Teaser:**` lines.
 - [x] v0.3.2 — gathering fixes: gather from any distance, distinct ore icons
 - [x] v0.3.3 — locked hero name, Abandon & Restart, self-writing builder's notes, fullscreen
 - [x] v0.3.4 — resizable panels, action banner & HUD under the compass, ingot icons
-- [ ] v0.4.0 — Visuals: hand-drawn tool & weapon icons, distinct skilling animations
-- [ ] v0.4.1 — Hands-On: right-click action menus, drag / select / use-on backpack
+- [x] v0.4.0 — Visuals: jointed people & livestock, 4-way movement, per-job animations, gear icons, new rocks
+- [ ] v0.4.1 — Hands-On: right-click action menus, drag / select / use-on backpack, skill guides
 - [ ] v0.4.2 — Prayer: prayer points, combat blessings, altars
 - [ ] v0.4.3 — Quests: gathering quests and a first Prayer quest
+- [ ] v0.4.4 — Sound & Score: original background music and a full sound-effects pass
 - [ ] v0.5.0 — a ~5× wider realm, the Wildwood, Fletching & Ranged
 - [ ] v0.6.0 — the Vale square rebuilt as a proper village
 - [ ] Light up the remaining 13 skills
-- [ ] An original soundtrack
 - [ ] Deeper crafting chains (fletching, crafting, leather)
 
 ## Legal note

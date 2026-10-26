@@ -22,58 +22,11 @@ these up only if shimmer or flashes show up again.
 
 ---
 
-## v0.4.0 — Visuals (planned)
-
-Make what's already in the game look the part: real icons for every tool
-and weapon, and a distinct animation for every job.
-
-### 🗡️ Hand-Drawn Tool & Weapon Icons
-- **Teaser:** Every tool and weapon gets its own hand-drawn icon
-- Most gear still uses shared emojis, and some are simply wrong: the
-  **bronze sword shows ⚔️ (crossed swords)** for what is a single blade.
-- Draw SVG icons (same style as the v0.3.2 ores and v0.3.4 ingots) for:
-  - **Weapons:** bronze sword; bronze / iron / steel daggers (all 🗡️ today)
-  - **Axes:** bronze / iron / steel / mithril (all 🪓)
-  - **Pickaxes:** bronze / iron / steel / mithril (all ⛏️)
-  - **Armour:** bronze platebody (🛡️, a shield, for body armour)
-  - **Fly fishing rod** (🎣)
-- One shared shape per tool type, tinted per metal (bronze / iron / steel /
-  mithril), so tiers read at a glance without relying on the T1–T4 badge.
-- While there: **raw vs cooked chicken** both show 🍗 (raw already has an
-  SVG; give cooked its own), and logs / oak logs (🪵 / 🌳).
-- Files: `src/components/ItemIcon.tsx` (`getSvg` / `getEmoji`).
-
-### 🪓 Distinct Skilling Animations
-- **Teaser:** Every job moves differently — chop, mine, hammer, cast and cook
-- Today every action uses **one generic swing** (`drawPlayer64` in
-  `render.ts`: a `sin(time/70)` arm rotation), so chopping, mining, anvil
-  smithing and combat all look identical. The held item is also a generic
-  stick-and-head coloured by whatever is equipped, not by the job — chopping
-  with a pickaxe equipped shows a pickaxe.
-- Give each job its own pose, timed to the action's cycle:
-  - **Woodcutting:** side-on horizontal swing at trunk height, a "thunk"
-    pause on contact, sawdust on impact.
-  - **Mining:** overhead downward strike, recoil, ore sparks on impact.
-  - **Anvil smithing:** short rapid hammer taps, bright sparks.
-  - **Furnace smelting:** both arms forward feeding ore, glow on the hero.
-  - **Cooking:** arm held out over the fire, slight turning motion.
-  - **Fishing:** cast, then an idle hold with line + bobber on the water.
-  - **Combat:** per weapon — dagger stab, sword slash, unarmed punch.
-  - **Bury bones:** a quick kneel.
-- Draw the *right* tool for the job (axe head, pick head, hammer, rod) in
-  the hand, tinted by its metal tier.
-- Sync impact frames to the action timer so particles and the hit sound land
-  on the swing, not at random.
-- Mirror the 8-bit Legacy renderer with simpler versions of each pose.
-- Pairs with the hand-drawn tool icons above: build the per-tool shapes and
-  metal tints once and use them for both the icon and the in-hand sprite.
-
----
-
 ## v0.4.1 — Hands-On (planned)
 
 Interaction you notice on every click: right-click menus in the world and a
-backpack you can actually handle. Sets up Talk and *use on* for quests.
+backpack you can actually handle, plus clickable skill guides. Sets up Talk
+and *use on* for quests.
 
 ### 🖱️ Right-Click Action Menus
 - **Teaser:** Right-click anything for a menu of actions — talk, trade, inspect and more
@@ -103,6 +56,24 @@ backpack you can actually handle. Sets up Talk and *use on* for quests.
 - Long-press on touch/mobile to open the menu?
 - Should the menu list every target stacked on a tile (e.g. a cow standing on
   dropped loot), or only the topmost?
+
+### 📜 Skill Guides — click a skill to see what it unlocks
+- **Teaser:** Click any skill to see what your level lets you do, and what comes next
+- Every skill in the **Skills** tab becomes clickable and opens a guide
+  window (glass panel, same style as the bank/shop) showing:
+  - current level, XP, and XP to the next level,
+  - a list of everything the skill unlocks, in level order, each marked
+    ✔ available or 🔒 locked with the level it needs. Example at
+    Woodcutting 4: ✔ Trees (lvl 1) · 🔒 Oak trees (lvl 15),
+  - tools tied to the skill (axes / pickaxes by tier and the level to wield
+    them, the fly rod, etc.),
+  - for production skills, the recipes (Smithing: bars at the furnace, then
+    daggers / swords / platebody at the anvil; Cooking: each food and its
+    heal amount).
+- Built from the existing data tables (`RESOURCES`, `RECIPES`, `ITEMS`) so
+  new content shows up in the guide automatically.
+- Skills with no content yet show a short "coming in a future update" note.
+- Pairs with the right-click menus: right-click a skill → *View guide*.
 
 ### 🎒 Backpack Interaction — Select, Drag & Use
 - **Teaser:** A hands-on backpack — drag items around, select one and use it on things
@@ -188,6 +159,54 @@ can lean on menus, the backpack and Prayer.
 - Do turned-in items get consumed (yes, probably) and must they be in the
   backpack, or can the bank count?
 - Quest points as a separate tally / unlock gate for later content?
+
+---
+
+## v0.4.4 — Sound & Score (planned)
+
+Give the realm a voice: a full sound-effects pass and background music with
+the warm, orchestral-fantasy feel of RuneScape 3, all of it original.
+
+### 🎵 Background Music
+- **Teaser:** A score for the realm is being composed — music for every corner of the map
+- **Feel, not copies:** aim for RS3's *mood* (gentle orchestral/folk
+  fantasy, looping area themes, a calm and adventurous "MMO afternoon"
+  vibe). **No Jagex melodies, samples, tracks or recognisable motifs**, no
+  names or titles borrowed from their soundtrack, and nothing "in the style
+  of" a specific track. Every tune is written for ForgeBound.
+- **Area themes:** a track per zone (the Vale, the woods, the mine and
+  quarry, the riverbank, the goblin gully), with a soft crossfade as the
+  hero walks between them. Fits naturally with the v0.5.0 world expansion.
+- **Moments:** short stingers for level-ups (replacing or extending today's
+  arpeggio), quest complete, death, and maybe a night-time variation.
+- **How it's made:** stay asset-free if possible: a small sequencer on the
+  existing WebAudio engine (`src/game/audio.ts`) playing hand-written note
+  data through layered synth "instruments" (pad, plucked string, flute,
+  soft drum). Fallback if it sounds too chiptune: self-composed or
+  CC0-licensed audio files, embedded so the single-file offline build
+  survives. Record each track's source and licence in the repo.
+- **Settings:** separate Music and Effects volume sliders (alongside the
+  existing mute), remembered like the other options. Music off by default
+  until the first click, since browsers block autoplay anyway.
+
+### 🔊 Sound Effects Pass
+- **Teaser:** Every swing, splash and sizzle gets its own sound
+- Today's effects are a handful of synth blips. Give every action a
+  distinct, crunchier sound: axe thunks, pick clinks, anvil rings, furnace
+  roar, fire sizzle, reel and splash, footsteps per ground type (grass,
+  path, wood, stone), UI clicks, bank and shop open/close, item drop/pick-up,
+  eating, bury, and a proper creature set (cow, chicken, goblin).
+- Land each sound on the matching animation's impact frame (builds on the
+  v0.4.0 per-job animations).
+- Ambient beds: birdsong by day, crickets at night, running water near the
+  river, the forge hum near the furnace and anvil. Volume falls off with
+  distance.
+- Same copyright rule as the music: original or CC0 only, no ripped game
+  audio.
+
+**Open questions:**
+- Pure synthesis vs embedded audio files (and what that does to build size)?
+- How many area themes for the first cut, before v0.5.0 adds new zones?
 
 ---
 

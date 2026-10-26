@@ -3,6 +3,87 @@
 All notable changes to **ForgeBound**. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project follows semver.
 
+## [0.4.0] — Gamma v0.4.0 · Visuals — 2026-10-26
+
+Make what's already in the game look the part: a hero and townsfolk who
+look like people, livestock that walk like animals, real icons for every
+tool and weapon, and a different motion for every job.
+
+### Added
+
+- Distinct work animations, timed to the action bar: a level, side-on axe
+  swing with a "thunk" hold at the trunk; an overhead pickaxe strike that
+  recoils off the rock; quick hammer taps at the anvil; both hands feeding
+  ore into the furnace under its glow; a pan held out and turned over the
+  fire; a fishing cast with line and bobber on the water (or a net dipped
+  into the shallows for shrimp); and per-weapon combat: dagger stab, sword
+  slash with a motion trail, and bare-fisted jabs
+- Combat training switch in the Gear tab: melee hits train Attack,
+  Strength or both. Each hit's XP is shared between the skills switched on
+  (one alone gets the whole amount), and at least one always stays on.
+  Defence is still earned only from blows taken, and Hitpoints from every
+  hit. The choice is saved with the game
+- The hero kneels for a moment when burying bones
+- Sawdust, ore sparks, anvil sparks and splashes burst as each blow lands
+  instead of trickling out at random, and every axe, pick and hammer blow
+  has its own thunk, clink or tap
+- The hero turns to face the tree, rock, station or foe being worked
+- Classic 8-bit mode shows a simple tool that follows the same motions
+- The hero faces and walks in all four directions, with front and back
+  views as well as the side view, and turns up or down to work a tree,
+  rock or foe above or below
+
+### Changed
+
+- The hero is a jointed figure instead of a round body: head with hair and
+  a face, neck, a torso that tapers from the shoulders to the belt, and
+  arms and legs with elbows and knees. Walking is a real stride (knees
+  fold as each leg swings through, arms swing opposite the legs), and the
+  bronze platebody now covers the shoulders and upper arms
+- The right tool is in hand for each job: an axe to chop and a pickaxe to
+  mine (tinted bronze, iron, steel or mithril by tier), a smith's hammer,
+  a rod or net, a frying pan. It used to be one generic stick tinted by
+  whatever happened to be equipped. When idle or walking the hero carries
+  the equipped weapon
+- Hand-drawn icons for every tool and weapon, using the same shapes the
+  hero holds in the world: bronze sword (was ⚔️, two swords), bronze /
+  iron / steel daggers, bronze / iron / steel / mithril axes and pickaxes,
+  each tinted by metal so tiers read at a glance; bronze platebody (was a
+  🛡️ shield) and the fly fishing rod
+- Goblins, Bramble Brigands, Roka and Old Maro share the hero's jointed
+  body. Goblins are short and green with big pointy ears, a studded club
+  and a round shield; brigands stand taller and broader. Roka wears a robe
+  and a feathered cap, Old Maro a blue robe, a white beard and his orb
+  staff. Everyone walks in four directions
+- Cows and hens are redrawn with jointed legs: cows walk with a proper
+  diagonal gait, swish their tails and stop to graze; hens bob their heads
+  as they step and peck at the ground. Both face the way they walk
+- Foes turn to face the hero in a fight and strike on the same beat: a
+  goblin swings its club, a cow lowers its head and butts, a hen flaps and
+  pecks
+- Mining rocks are faceted boulders (a slightly different shape on every
+  tile) with ore crystals set into the stone, cracks, rubble at the foot and
+  a glint on gold, instead of round grey balls with coloured diamonds.
+  Emptied rocks sink to a low rubble mound
+- Raw beef and steak are drawn as a proper cut of meat (marbled red raw,
+  seared brown with grill marks when cooked, fat rim and bone), replacing
+  the shapeless red blob
+- Paddock fences around the cows and the chicken coop are post-and-rail:
+  one wooden post per tile with split rails that join only to neighbouring
+  fence, so corners and gate gaps connect cleanly. They used to be a
+  repeating grid that looked like railway track
+- Cooked chicken has its own golden-brown icon (it shared 🍗 with raw
+  chicken), and logs and oak logs are stacked, end-on log piles
+
+### Fixed
+
+- The hero stops beside a cow, hen or goblin to fight it instead of walking
+  onto its tile. A foe in a fight now holds its ground instead of wandering
+  off, and wandering animals and goblins no longer step onto the hero
+- Smelting and smithing stop as soon as the last set of materials is used.
+  The hero used to take one more empty swing at the furnace or anvil before
+  noticing nothing was left
+
 ## [0.3.4] — Gamma v0.3.4 · Resizable Windows & HUD — 2026-10-25
 
 Make the screen your own: panels that stretch, a HUD that knows its place,
