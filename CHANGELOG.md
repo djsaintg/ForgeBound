@@ -3,6 +3,33 @@
 All notable changes to **ForgeBound**. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project follows semver.
 
+## [0.3.3] — Gamma v0.3.3 · Login Page Edits — 2026-10-25
+
+A new front door: your hero's name is yours for keeps, the builder's notes
+write themselves, and the realm can fill the whole screen.
+
+### Added
+
+- **Abandon & Restart** on the login card: a smaller gold button under
+  Continue that deletes the current save so a new hero can be named. It asks
+  for a second click before anything is wiped, and backs out on its own after
+  five seconds
+- Builder's notes now write themselves and stay on show: a three-column strip
+  under the login card shows the previous release, the live release
+  (centred and highlighted) and what's on the anvil next. Releases come
+  straight from this changelog and the preview from public teaser lines in
+  `ROADMAP.md`, all baked into the build
+- Fullscreen play: tick **Play fullscreen** on the login card and the game
+  fills the screen when you enter the realm, with no browser tabs, address bar
+  or title bar. The choice is remembered, and Settings has a Fullscreen
+  on/off button. Esc always drops back to a window
+
+### Changed
+
+- The display name is chosen once. With a save on the device, the login card
+  shows your hero's name instead of an input box, and the old "Begin a new
+  adventure" button is gone
+
 ## [0.3.2] — Gamma v0.3.2 · Gathering Fixes — 2026-10-24
 
 A small patch: click from anywhere and get to work, with ore you can tell

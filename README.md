@@ -3,7 +3,7 @@
 **A single-player action-RPG that lives in one HTML file.**
 Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
-`v0.3.2 — Gamma Gathering Fixes` · `100% offline` · `MIT licensed`
+`v0.3.3 — Gamma Login Page Edits` · `100% offline` · `MIT licensed`
 
 ---
 
@@ -11,7 +11,18 @@ Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
 [![Sponsor](https://raw.githubusercontent.com/djsaintg/djsaintg/main/sponsor.svg)](https://buymeacoffee.com/djsaintg)
 
-## What's new in v0.3.2
+## What's new in v0.3.3
+
+- **Your name, for keeps** — the display name locks when the adventure
+  begins; a smaller **Abandon & Restart** button (with a second-click
+  confirm) wipes the save when you want a new hero
+- **Builder's notes that write themselves** — an always-on strip under the
+  login card shows the previous release, the live one and what's on the
+  anvil next, read straight from `CHANGELOG.md` and `ROADMAP.md` at build
+- **Fullscreen play** — tick *Play fullscreen* on the login card (or use
+  Settings) to hide the browser's tabs and title bar
+
+## v0.3.2 — Gathering Fixes
 
 - **Gather from anywhere** — click a tree, rock or fishing spot from across
   the map and the hero walks over and gets straight to work (it used to
@@ -199,7 +210,8 @@ to grow the world); new gameplay loops in the tick inside `src/game/useGame.ts`.
 
 **Cutting a release:** bump `"version"` in `package.json` (the page title,
 login screen and log pick it up on build), move the changelog's notes under a
-new version heading, then tag it — `git tag -a v0.3.1 -m "..."`.
+new version heading, then tag it — `git tag -a v0.3.3 -m "..."`. Planned items in `ROADMAP.md`
+reach the login screen only through their `- **Teaser:**` lines.
 
 ## Roadmap
 
@@ -208,10 +220,12 @@ new version heading, then tag it — `git tag -a v0.3.1 -m "..."`.
 - [x] Gamma v0.3.0 — remastered renderer, walk cycle, fire lighting, mountains, camera
 - [x] v0.3.1 — visual repairs: canvas flicker, camera jitter and click targeting
 - [x] v0.3.2 — gathering fixes: gather from any distance, distinct ore icons
-- [ ] v0.3.3 — login flow rework + changelog-driven builder's notes, resizable windows
-- [ ] Quests with real rewards
+- [x] v0.3.3 — locked hero name, Abandon & Restart, self-writing builder's notes, fullscreen
+- [ ] v0.3.4 — resizable Backpack & Log windows, HUD placement under the compass
+- [ ] v0.4.0 — gathering quests, right-click action menus, Prayer blessings
+- [ ] v0.5.0 — a ~5× wider realm, the Wildwood, Fletching & Ranged
+- [ ] v0.6.0 — the Vale square rebuilt as a proper village
 - [ ] Light up the remaining 13 skills
-- [ ] A bigger world — push the Peaks back, new country beyond
 - [ ] An original soundtrack
 - [ ] Deeper crafting chains (fletching, crafting, leather)
 
