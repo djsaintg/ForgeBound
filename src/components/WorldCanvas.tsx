@@ -3,6 +3,7 @@ import type { GameApi } from "../game/useGame";
 import { clampCam, render, tileSize } from "../game/render";
 import type { GameState } from "../game/types";
 import { dirFrom, type Dir } from "../game/figure";
+import { stopSoundscape, updateSoundscape } from "../game/soundscape";
 import { ITEMS } from "../game/data";
 import { ItemIcon } from "./ItemIcon";
 import { useContextMenu, useLongPress } from "./ContextMenu";
@@ -122,6 +123,7 @@ export function WorldCanvas({ api }: { api: GameApi }) {
             if (!g || w === 0) return;
 
             api.update(dt, t);
+            updateSoundscape(g, t);
 
             // re-render the React panels only when something visible changed
             const sig = uiSignature(g);
@@ -140,6 +142,7 @@ export function WorldCanvas({ api }: { api: GameApi }) {
         return () => {
             cancelAnimationFrame(raf);
             ro.disconnect();
+            stopSoundscape();
         };
     }, [api]);
 

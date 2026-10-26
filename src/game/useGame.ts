@@ -39,10 +39,10 @@ import {
   SWING_SPEED,
   TOOL_SPEED,
 } from "./data";
-import { COW_SPAWNS, CHICKEN_SPAWNS, GOBLIN_SPAWNS, MAP_H, MAP_W, SPAWN, objAt, walkable } from "./map";
+import { COW_SPAWNS, CHICKEN_SPAWNS, GOBLIN_SPAWNS, MAP_H, MAP_W, SPAWN, groundAt, objAt, walkable } from "./map";
 import { adjacentTo, findPath } from "./pathfinding";
 import { MAX_XP, SKILLS, SKILL_BY_ID, fmt, levelForXp } from "./xp";
-import { sfx } from "./audio";
+import { sfx, type Ground } from "./audio";
 import { emote, jobOf, strikesDone } from "./anim";
 import { NPC_NAME, QUESTS, currentStepOf, eventMatches, questPointsOf, stepProgressOf, today, type QuestDef } from "./quests";
 
@@ -61,6 +61,12 @@ interface Thing {
   use: (slot: number) => void;
 }
 const nextId = () => uid++;
+
+/** What the hero's footsteps sound like on a tile. */
+function groundSound(x: number, y: number): Ground {
+  const gch = groundAt(x, y);
+  return gch === "#" ? "stone" : gch === "," ? "path" : gch === "b" ? "wood" : gch === "_" ? "sand" : "grass";
+}
 
 function findObjChar(ch: string): { x: number; y: number } | null {
   for (let y = 0; y < MAP_H; y++) {
@@ -386,7 +392,7 @@ export function useGame() {
       if (kind === "bank") gg.bankOpen = true;
       else if (kind === "shop") gg.shopOpen = true;
       else if (station) gg.stationUI = { station, x, y };
-      sfx.click();
+      sfx.open(kind === "craft" ? "station" : kind);
     } else {
       gg.path = findPath(gg.x, gg.y, x, y) ?? [];
       gg.pendingStation = { kind, station, x, y };
@@ -449,8 +455,11 @@ export function useGame() {
     const gg = g();
     const all = { name: gg.name, qp: questPoints(), ...vals };
     gg.dialogue = { id: nextId(), npc, x, y, pages: pages.map((l) => fill(l, all)), page: 0, options };
+    sfx.voice(npc, syllablesFor(gg.dialogue.pages[0]));
     bump();
   };
+  /** Longer lines get a little more babble, within reason. */
+  const syllablesFor = (line: string) => Math.max(3, Math.min(7, Math.round(line.split(" ").length / 4)));
   const endTalk = () => { g().dialogue = null; bump(); };
   const bye: DialogueOption = { label: "Goodbye.", run: endTalk };
 
@@ -568,7 +577,7 @@ export function useGame() {
       got.push(ITEMS[it].name.toLowerCase());
     }
     chat("sys", `🏆 Quest complete: ${q.name}! You receive ${got.join(", ")} and ${q.reward.qp} quest point${q.reward.qp > 1 ? "s" : ""}.`);
-    sfx.levelUp();
+    sfx.quest();
   };
 
   // Roka's Supply Runs: four requests, each once per (local) day
@@ -639,7 +648,7 @@ export function useGame() {
   const dialogueNext = () => {
     const d = g().dialogue;
     if (!d) return;
-    if (d.page < d.pages.length - 1) d.page++;
+    if (d.page < d.pages.length - 1) { d.page++; sfx.voice(d.npc, syllablesFor(d.pages[d.page])); }
     else if (!d.options.length) g().dialogue = null;
     bump();
   };
@@ -702,7 +711,7 @@ export function useGame() {
     const added = addItem(gItem.item, gItem.n);
     if (added > 0) {
       gg.groundItems.splice(idx, 1);
-      sfx.coin();
+      if (gItem.item === "coins") sfx.coin(); else sfx.pickup();
       const itemName = ITEMS[gItem.item]?.name.toLowerCase() || gItem.item;
       chat("info", `${gg.name} picked up ${gItem.n > 1 ? gItem.n + "× " : ""}${itemName} from the ground.`);
     }
@@ -746,11 +755,11 @@ export function useGame() {
       chat("info", `${gg.name} raises their weapon and attacks the pasture cow! Moo!`);
     } else if (kind === "chicken") {
       f.cluck = performance.now() + 1000;
-      sfx.click();
+      sfx.cluck();
       chat("info", `${gg.name} attacks the coop hen! "Cluck cluck!" 🐔`);
     } else {
       f.grunt = performance.now() + 1200;
-      sfx.swing();
+      sfx.grunt();
       const taunts = [
         `Goblin Warrior grunts fiercely! "Human dare challenge N.E. clan?!"`,
         `Goblin Warrior raises spiked club! "You pay shiny gold for trespassing!"`,
@@ -1295,10 +1304,7 @@ export function useGame() {
     cancelAction();
     closeWindows();
     const path = findPath(gg.x, gg.y, x, y);
-    if (path) {
-      gg.path = path;
-      sfx.step();
-    }
+    if (path) gg.path = path;
   };
 
   const update = (dt: number, now: number) => {
@@ -1315,7 +1321,7 @@ export function useGame() {
         const t = gg.path.shift()!;
         gg.x = t.x;
         gg.y = t.y;
-        sfx.step();
+        sfx.step(groundSound(gg.x, gg.y));
       }
     } else {
       moveAcc.current = 0;
@@ -1327,7 +1333,7 @@ export function useGame() {
         if (p.kind === "talk" || p.kind === "pray") {
           pendingDo.current?.();
           pendingDo.current = null;
-        } else sfx.click();
+        } else sfx.open(p.kind === "craft" ? "station" : p.kind);
         gg.pendingStation = null;
       }
       if (gg.pendingTake !== null) {
@@ -1539,7 +1545,7 @@ export function useGame() {
       const healAmount = def.heal ?? 3;
       gg.hp = Math.min(gg.maxHp, gg.hp + healAmount);
       chat("info", `${gg.name} heartily ate ${art(def.name)} ${def.name.toLowerCase()} · +${healAmount} HP`);
-      sfx.gather();
+      sfx.eat();
       questEvent({ kind: "eat", item: s.item });
     }
     bump();
@@ -1560,7 +1566,7 @@ export function useGame() {
     const where = b.skill !== "combat" ? SKILL_BY_ID[b.skill].name
       : into === "split" ? "Attack and Strength" : SKILL_BY_ID[into!].name;
     chat("sys", `${gg.name} uncorks the bottle and the light pours into ${where} · +${b.xp} XP`);
-    sfx.bless();
+    sfx.pour();
     bump();
   };
 
@@ -1667,6 +1673,7 @@ export function useGame() {
     if (!gg.groundItems) gg.groundItems = [];
     gg.groundItems.push({ id: nextId(), item: s.item, n: s.n, x: Math.round(gg.x), y: Math.round(gg.y), t: performance.now() });
     chat("info", `${gg.name} dropped ${s.n > 1 ? s.n + "× " : ""}${ITEMS[s.item].name.toLowerCase()} onto the ground.`);
+    sfx.drop();
     bump();
   };
 
@@ -1827,6 +1834,7 @@ export function useGame() {
   /** Escape / ✕: close every window and put down a held item. */
   const closeOverlays = () => {
     const gg = g();
+    if (gg.bankOpen || gg.shopOpen || gg.stationUI || gg.guide || gg.settingsOpen) sfx.close();
     closeWindows();
     gg.settingsOpen = false;
     gg.selected = null;

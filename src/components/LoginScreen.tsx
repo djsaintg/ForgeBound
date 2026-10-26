@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { sfx } from "../game/audio";
+import { peekAudio, sfx } from "../game/audio";
+import { playTitle } from "../game/music";
 import { enterFullscreen, fullscreenPref, fullscreenSupported, setFullscreenPref } from "../game/fullscreen";
 import { VERSION } from "../version";
 import { PLANNED, RELEASES, type Release } from "../notes";
@@ -183,6 +184,19 @@ export function LoginScreen({
   const [confirming, setConfirming] = useState(false);
   const [fullscreen, setFullscreen] = useState(fullscreenPref());
   const hasSave = savedName !== null;
+
+  // The title theme: straight away if audio is already running (back from the
+  // world), otherwise on the first click or key press, which browsers require.
+  useEffect(() => {
+    if (peekAudio()?.c.state === "running") playTitle();
+    const unlock = () => playTitle();
+    window.addEventListener("pointerdown", unlock, { once: true });
+    window.addEventListener("keydown", unlock, { once: true });
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
 
   // The confirm state quietly lapses if the player doesn't follow through.
   useEffect(() => {

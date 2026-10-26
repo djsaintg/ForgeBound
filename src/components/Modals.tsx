@@ -9,7 +9,9 @@ import { useContextMenu } from "./ContextMenu";
 import { slotDragProps, useTouchSlotDrag } from "./SlotDrag";
 import { sfx } from "../game/audio";
 import { enterFullscreen, exitFullscreen, fullscreenSupported, setFullscreenPref, useFullscreen } from "../game/fullscreen";
-import { Maximize2, Minimize2, Monitor, RotateCcw, Save, Sparkles, Volume2, VolumeX, ZoomIn } from "lucide-react";
+import { Maximize2, Minimize2, Monitor, Music, RotateCcw, Save, Sparkles, Volume2, VolumeX, ZoomIn } from "lucide-react";
+import { getAudioSettings, setAudioSettings } from "../game/audio";
+import { currentTheme } from "../game/music";
 
 /** `drop` says what a backpack item dragged onto the window does (see SlotDrag). */
 function Backdrop({ onClose, children, drop = "keep" }: { onClose: () => void; children: React.ReactNode; drop?: "keep" | "bank" }) {
@@ -263,6 +265,7 @@ export function ShopModal({ api, g }: { api: GameApi; g: GameState }) {
 // ---------------------------------------------------------------- settings --
 export function SettingsModal({ api, g }: { api: GameApi; g: GameState }) {
     const [muted, setMuted] = useState(sfx.isMuted());
+    const [vol, setVol] = useState(() => getAudioSettings());
     const fullscreen = useFullscreen();
     if (!g.settingsOpen) return null;
 
@@ -299,6 +302,32 @@ export function SettingsModal({ api, g }: { api: GameApi; g: GameState }) {
                 </div>
             </div>
 
+            <div className="space-y-3 rounded-sm border border-[#3a2f1e] bg-[#14100a] p-3.5">
+                <label className="font-display flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#c8b070]">
+                    <Music className="h-3.5 w-3.5 text-[#e8c876]" /> Sound
+                </label>
+                {([["music", "Music", "The score and its area themes"], ["effects", "Effects", "Actions, creatures and ambience"]] as const).map(([key, label, hint]) => (
+                    <div key={key}>
+                        <div className="flex items-center justify-between text-[11px]">
+                            <span className="font-bold text-[#e0d6c0]">{label} <span className="font-normal text-[#6a5a3a]">· {hint}</span></span>
+                            <span className="font-mono text-[#e8c876]">{Math.round(vol[key] * 100)}%</span>
+                        </div>
+                        <input
+                            id={`vol-${key}`}
+                            type="range" min="0" max="1" step="0.05"
+                            value={vol[key]}
+                            onChange={(e) => {
+                                const v = parseFloat(e.target.value);
+                                setAudioSettings({ [key]: v });
+                                setVol((o) => ({ ...o, [key]: v }));
+                            }}
+                            className="mt-1 h-2 w-full cursor-pointer rounded bg-[#0c0906] accent-[#d8b25c]"
+                        />
+                    </div>
+                ))}
+                {currentTheme() && <div className="text-[10px] italic text-[#6a5a3a]">Now playing: {currentTheme()}</div>}
+            </div>
+
             <div className="space-y-2.5 rounded-sm border border-[#3a2f1e] bg-[#14100a] p-3.5">
                 <label className="font-display flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.18em] text-[#c8b070]">
                     <Sparkles className="h-3.5 w-3.5 text-[#7ee06a]" /> Rendering engine
@@ -328,7 +357,7 @@ export function SettingsModal({ api, g }: { api: GameApi; g: GameState }) {
                 )}
                 <button onClick={toggleMute} className="btn-ghost flex w-full items-center justify-center gap-2 !py-2.5 text-[11px]">
                     {muted ? <VolumeX className="h-3.5 w-3.5 text-[#ff8a72]" /> : <Volume2 className="h-3.5 w-3.5 text-[#7ee06a]" />}
-                    WebAudio: {muted ? "Muted" : "Active"}
+                    Sound: {muted ? "Muted" : "On"}
                 </button>
                 <button
                     onClick={() => { api.saveNow(); api.closeOverlays(); }}

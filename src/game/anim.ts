@@ -59,3 +59,6 @@ export function toolFor(g: GameState, job: Job | null): { shape: GearShape; meta
 /** Set when bones are buried; the hero kneels for a moment. */
 export const emote = { buryAt: -1e9 };
 export const BURY_MS = 700;
+
+/** Day/night position, 0 = deep night, 1 = midday. Shared by the lighting pass and the soundscape. */
+export const dayCycle = (time: number) => (Math.sin(time / 4500) + 1) / 2;

@@ -2,7 +2,7 @@ import { MAP_W, MAP_H, TILE, groundAt, objAt } from "./map";
 import type { ChickenEnt, CowEnt, GameState, GoblinEnt, ItemId } from "./types";
 import { drawFigure, dirFrom, type Dir, type Look } from "./figure";
 import { drawChicken, drawCow } from "./creatures";
-import { BURY_MS, STRIKES, emote, jobOf, strikesDone, toolFor, type Job } from "./anim";
+import { BURY_MS, STRIKES, dayCycle, emote, jobOf, strikesDone, toolFor, type Job } from "./anim";
 import { METALS, type GearShape } from "./gear";
 import { GROUND_ITEM_MS, GROUND_ITEM_WARN_MS } from "./data";
 import { npcMarker, type NpcMarker } from "./quests";
@@ -1849,7 +1849,7 @@ export function render(
   // Two stages: a bluish darkness overlay proportional to time-of-day, then an
   // additive "lighter" pass that carves warm haloes around every fire on screen.
   if (is64) {
-    const cyc = (Math.sin(time / 4500) + 1) / 2; // 0..1, 0 = deep night, 1 = midday
+    const cyc = dayCycle(time); // 0..1, 0 = deep night, 1 = midday
     const night = 0.06 + (1 - cyc) * 0.28;
 
     // A) Cool night wash across the whole viewport
