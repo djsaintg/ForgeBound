@@ -84,6 +84,22 @@ and something to spend Prayer on. Fits the current map — no new zone needed.
 - Ties straight into combat — goblins and brigands become the natural
   training loop alongside burying their bones.
 
+### 🗡️ Hand-Drawn Tool & Weapon Icons
+- **Teaser:** Every tool and weapon gets its own hand-drawn icon
+- Most gear still uses shared emojis, and some are simply wrong: the
+  **bronze sword shows ⚔️ (crossed swords)** for what is a single blade.
+- Draw SVG icons (same style as the v0.3.2 ores and v0.3.4 ingots) for:
+  - **Weapons:** bronze sword; bronze / iron / steel daggers (all 🗡️ today)
+  - **Axes:** bronze / iron / steel / mithril (all 🪓)
+  - **Pickaxes:** bronze / iron / steel / mithril (all ⛏️)
+  - **Armour:** bronze platebody (🛡️, a shield, for body armour)
+  - **Fly fishing rod** (🎣)
+- One shared shape per tool type, tinted per metal (bronze / iron / steel /
+  mithril), so tiers read at a glance without relying on the T1–T4 badge.
+- While there: **raw vs cooked chicken** both show 🍗 (raw already has an
+  SVG; give cooked its own), and logs / oak logs (🪵 / 🌳).
+- Files: `src/components/ItemIcon.tsx` (`getSvg` / `getEmoji`).
+
 ---
 
 ## v0.5.0 — The Wider Realm (planned)
