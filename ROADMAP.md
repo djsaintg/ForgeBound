@@ -51,146 +51,77 @@ update path that does it in one step.
   status`, then launch as normal), fast-forward only, never touch saves
   (they live in the browser's localStorage, not the repo), and keep the
   previous `dist/index.html` as a backup in case the new build fails.
-- **Also:** the launcher's `REQUIRED_FILES` list predates v0.4.x; refresh it
-  (or derive it from `src/`) so the preflight check covers the newer
-  modules (quests, music, soundscape, …).
+- **Also:** the launcher's `REQUIRED_FILES` list is hand-kept (refreshed in
+  v0.5.0); consider deriving it from `src/` so it never goes stale.
 
 ---
 
-## v0.5.0 — The Wider Realm (planned)
+## v0.5.1 — The Wildwood (planned)
 
-Grow the world roughly **5× in playable area** and open new zones inside a
-pushed-back mountain ring, built around levelling the next skills. The
-current valley becomes one region of many. First new zone, working name:
-*The Wildwood*.
+v0.5.0 shipped the wider realm's groundwork: the Vale at ~5× its old area,
+region-built `map.ts`, the radar minimap, save migration, the village on the
+square, Greyhallow and the Restless Crypt, and waygates (see `CHANGELOG.md`).
+Next, the new zones themselves, one point release at a time.
 
-### 🗺️ World Expansion — ~5× the map
-- **Teaser:** Beyond the ridge — a far wider realm opens inside the mountains
-- **Size:** today's playable core is 56×36 tiles (2,016) inside an 8-tile
-  mountain band. Target ≈ 125×80 core (~10,000 tiles, ≈5×), so it is ~400%
-  *more* map. Final numbers decided at build time.
-
-- **Music for the new zones:** since v0.4.4 each area plays a theme
-  (`music.ts`: a chord per bar, a melody line and per-theme patterns, mapped
-  from `tileName` in `themeFor`). Each new zone gets its own original theme,
-  and the Wildwood can lean on the Westwood's harp and flute. Still open from
-  v0.4.4: a night-time variation (thinner, slower arrangement after dark).
-
-**Engine groundwork (small — do first, no new content yet):**
-- **Renderer & pathfinding: already fine.** Drawing only covers tiles on
-  screen, and BFS over ~10k tiles is trivial. No real cost there.
-- **Minimap → radar.** Since v0.4.1 the minimap zooms (1×–4×) and follows
-  the hero, and since v0.4.2 its terrain is pre-painted at 16 px/tile
-  (1,152×832 px today). At 5× the map that layer would be ~5,800×4,200 px,
-  too big for one canvas: paint it in tiles/chunks around the hero instead,
-  and drop the 1× "whole realm" step (or cap it) so it's a true
-  player-centred radar, keeping click-to-travel; optionally add a full
-  **World Map** overlay (key `M`).
-- **The 8-tile padding exists only so the full-map compass never covers
-  playable ground.** With a radar it can shrink to a slim mountain rim.
-- **Region-based authoring.** `map.ts` hand-places everything with
-  `+ OFFSET_X/Y` arithmetic in one file. Split into region modules
-  (`regions/valley.ts`, `regions/wildwood.ts`, …), each authored in local
-  coordinates (ideally as an ASCII layout block) and stamped onto the world
-  grid at an origin. Makes 5× the content manageable to write and tweak.
-- **Save migration.** Hero position, ground items and station lookups are
-  absolute tile coords. Keep the current valley at a fixed origin in the new
-  grid and migrate old saves by that offset (pattern already exists in
-  `loadGame`: the pre-expansion `g.x < 8` shift). Bump `SAVE_VERSION`.
-- Spawn lists (cows, hens, goblins) move into their regions too.
-- **Mountain ring visuals** (carried over from v0.3.x): refine the range art
-  so the border reads well wherever it ends up once it's pushed back.
-
-**Content (the real work):**
-- 5× the land needs 5× the reasons to walk it, or it feels empty. Plan
-  regions before drawing:
-  - **The Vale** (current valley, kept as the starter hub).
-  - **The Wildwood** — dense forest, willow/maple trees, a lake with a new
-    fishing spot, Fletching & Ranged training ground (below).
-  - **A highland mining camp** — higher-tier ore (mithril), a second
-    furnace/anvil, tougher foes guarding it.
-  - **Ruins / a second settlement** — quest-givers, a bank, Roka-style
-    trader, Prayer altar (ties into v0.4.2).
-- Roads linking regions, with landmarks so travel reads as a journey.
-- Gate deeper regions by level or quest (e.g. v0.4.3 starter quests).
-- Tougher foes for mid-level combat, with better drops.
-- Consider releasing in steps: v0.5.0 = groundwork + Wildwood, later
-  point releases add the remaining regions.
-
-**Open questions:**
-- Exact target size, and grow outward evenly or mostly in one direction?
-- Fast travel (signposts / teleports) once the map is large, or walk only?
-- Does the hero's walk speed need a bump (or a run toggle) for longer trips?
+### 🌲 The Wildwood
+- **Teaser:** The Wildwood — deep forest beyond the Vale, and a lake that has never been fished
+- Dense forest, willow/maple trees, a lake with a new fishing spot, and the
+  Fletching & Ranged training ground (below). Its own region block in
+  `map.ts`, its own theme in `music.ts` (it can lean on the Westwood's harp
+  and flute), and a waygate.
+- Where it goes: the map has room south of the river (the meadow there is
+  empty for now) or the surface can grow again. Decide at build time.
 
 ### 🔥 Firemaking
 - **Teaser:** Light your own fires — anywhere the valley allows
 - On the skills list since v0.4.3 (`impl: false`). Logs + a tinderbox make a
   fire on the hero's tile that burns out after a while; cook on it like the
-  square's campfire. Oak logs at a higher level.
+  square's bonfire. Oak logs at a higher level.
 - Pays off a thread from Old Maro's "The Smith's First Lesson", where he
   takes your logs "until I teach you to light a fire of your own". A short
   Maro quest can teach it.
-- Pairs naturally with Fletching below: both turn logs into something.
-
-### 🕯️ The Crypt (first Prayer quest)
-- **Teaser:** Something stirs in the old crypt beneath the shrine
-- Held back from v0.4.3 until there's somewhere to build it: an old crypt
-  beneath the chapel / shrine, sealed since the goblins came. Bring the
-  priest bones and candles (or similar), clear the restless dead inside,
-  and earn a new blessing or a blessed altar that recharges faster.
-- Needs its own small area: an instanced room, or a corner of the expanded
-  map. Gate it with quest points (the combat chain gives most of them).
-- Builds on the v0.4.3 quest system as is: steps, dialogue, markers,
-  quest points and XP bottles (a Prayer bottle fits).
 
 ### 🏹 New Skills: Fletching & Ranged
 - **Teaser:** Fletching and Ranged — carve bows, fletch arrows, fight from afar
-- The best fit for the existing world: **logs** and **feathers** already
-  drop, so Fletching (logs → shafts → arrows, logs → bows) slots in with no
-  new raw materials. Ranged then gives a second combat style that uses them.
-- The new zone hosts the training ground: an archery range / target butts
-  and a fletcher's workshop NPC.
-- Both skills already exist as greyed-out entries in `xp.ts` (`impl: false`);
-  flip them on and add their recipes/actions.
+- Logs and feathers already drop, so Fletching (logs → shafts → arrows,
+  logs → bows) needs no new raw materials. Ranged gives a second combat
+  style that uses them. Both exist as greyed-out entries in `xp.ts`.
+- The Wildwood hosts an archery range and a fletcher's workshop NPC.
+- **Decided:** arrows are used up on firing, but roughly 1 in 3 lands near
+  the target and can be picked up again.
 
-**Open questions:**
-- Zone name and theme.
-- How big a map expansion the renderer and pathfinding can comfortably take.
-- Ranged ammo: consumed per shot, or partially recoverable from the ground?
+### 🗺️ More regions (v0.5.2+)
+- **A highland mining camp** — mithril, a second furnace/anvil, tougher foes.
+- **Ruins / a second settlement** — quest-givers, a trader.
+- Tougher mid-level foes with better drops; gate deeper regions by level or
+  quest. Each new region gets a waygate.
+- Still open from v0.4.4: a night-time variation for the music.
+- **Mountain ring visuals:** refine the range art now the rim is slim.
+- **Minimap:** the radar paints the whole realm into one canvas at 16 px a
+  tile (~2.6k × 1.7k today). If the map grows much more, paint it in chunks
+  around the hero instead. A full World Map overlay (key `M`) is still an
+  option.
 
 ---
 
 ## v0.6.0 — A Proper Village (planned)
 
-The Vale's open square becomes a real village: actual buildings that house
-the people and services already there.
+v0.5.0 already put the square's services under roofs: the smithy, the bank
+(with Hesta), Roka's Trading Post and Old Maro's hut, round a central
+bonfire, using exterior-only buildings whose roofs fade while you're inside
+(`raise()` in `map.ts`, art in `village.ts`). v0.6.0 finishes the village.
 
-### 🏘️ Vale Village Rebuild
-- **Teaser:** The Vale grows up — a proper village with real buildings
-- Give every service a home instead of standing in the open:
-  - **Forge / smithy** — furnace and anvil under one roof
-  - **Bank** — a stone counting-house
-  - **Roka's trading post** — a shopfront
-  - **Old Maro's cottage** — the guide's house
-  - **Inn / tavern** — campfire cooking moves to a hearth; a natural home
-    for quest-givers (ties into v0.4.3 quests and v0.4.1 Talk menus)
-  - Homes for villagers, a well, market stalls, a chapel or shrine
-    (pairs with the v0.4.2 Prayer altar)
-- **How buildings work (decide at build time):**
-  - *Exterior-only* — walls block, a door tile is the way in, the roof fades
-    out when the hero walks inside (classic top-down approach; fits the
-    current single-map renderer best).
-  - *Separate interiors* — doors load a small interior map. More work:
-    needs map switching and save support.
-- Multi-tile sprites: walls, roofs, doors, windows, chimneys with smoke —
-  in both 64-bit and 8-bit modes.
-- Builds on the v0.5.0 region system: the Vale becomes its own region
-  module, so rebuilding it doesn't touch the rest of the world.
-- Save migration if station/NPC tiles move.
+### 🏘️ The rest of the Vale village
+- **Teaser:** The Vale grows up — homes, an inn and a market round the square
+- **Inn / tavern** — a hearth to cook at and a home for new quest-givers
+  (ties into the v0.4.3 quest system and v0.4.1 Talk menus)
+- Homes for villagers, a well, market stalls
+- Furnishing inside the existing buildings: a coal heap and quench trough
+  in the smithy, a counter in the trading post, a bed and hearth in Maro's hut
+- Villager NPCs who wander or idle about the square
 
 **Open questions:**
-- Roofs that fade vs. separate interior maps?
-- Keep the existing layout recognisable, or redesign the square freely?
+- Keep exterior-only buildings, or add separate interior maps for larger ones?
 - Villager NPCs who wander/idle, or static figures?
 
 ---

@@ -3,7 +3,7 @@
 **A single-player action-RPG that lives in one HTML file.**
 Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
-`v0.4.4 — Gamma Sound & Score` · `100% offline` · `MIT licensed`
+`v0.5.0 — Gamma The Wider Realm` · `100% offline` · `MIT licensed`
 
 ---
 
@@ -11,7 +11,24 @@ Chop, mine, fish, smelt and smith — no servers, no accounts, no signal.
 
 [![Sponsor](https://raw.githubusercontent.com/djsaintg/djsaintg/main/sponsor.svg)](https://buymeacoffee.com/djsaintg)
 
-## What's new in v0.4.4
+## What's new in v0.5.0
+
+- **A realm five times the size** — the Vale is spread out to about 5× the
+  ground, with more cows, hens, goblins, rocks and fishing spots, inside a
+  slimmer ring of mountains
+- **A village square** — the smithy, the Bank of ForgeBound (with Hesta the
+  teller), Roka's Trading Post and Old Maro's hut, round a great bonfire.
+  Roofs fade away when you step inside
+- **Greyhallow** — a chapel and churchyard west past the Westwood. The altar
+  has moved there, kept by Brother Cael
+- **The Restless Crypt** — the first Prayer quest: lay the dead to rest
+  beneath the churchyard, face the Hollow Warden, and learn Spirit Ward
+- **Waygates** — attune to standing-stone gates by walking past them, then
+  travel between any you know
+- **A radar minimap** that follows you, and two new themes for the chapel
+  and the crypt
+
+## v0.4.4 — Sound & Score
 
 - **An original score** — a title theme and three area themes (the Vale,
   the Westwood and river, the gully and mine) that crossfade as you travel,
@@ -197,16 +214,19 @@ machine, same browser, pick up where you left off.
 
 | Region            | What's there                                                                 |
 | ----------------- | ---------------------------------------------------------------------------- |
-| **Vale Square**   | The heart of it: furnace, anvil, campfire, bank booth, and Roka's trading post |
+| **Vale Square**   | The village: the smithy (furnace and anvil), the Bank of ForgeBound, Roka's Trading Post and Old Maro's hut, round a bonfire for cooking |
+| **Greyhallow**    | A chapel with the realm's altar and Brother Cael, and a churchyard over the old crypt, west past the Westwood |
+| **The Crypt**     | Beneath the churchyard: the Restless Dead and the Hollow Warden. Opened by Brother Cael's quest |
 | **The Westwood**  | Trees and oaks — your first XP                                               |
 | **Keldrek Mine**  | Copper, tin, iron, coal… and gold, if you're good enough                     |
 | **The River**     | Shrimp in the western shallows, trout in the eastern current (bring a rod and feathers) |
 | **The Pasture**   | Cows — with opinions, raw beef, and bones                                    |
-| **The Coop**      | Four hens south-east of the square: feathers, raw chicken, and eggs they lay |
-| **Grublin Gully** | A goblin camp north-east through the pasture — two Bramble Brigands lurk in the deep |
+| **The Coop**      | Hens east of the square: feathers, raw chicken, and eggs they lay |
+| **Grublin Gully** | A goblin camp up the north road — Bramble Brigands lurk in the deep |
+| **Waygates**      | Standing stones at the square, Greyhallow and Keldrek Mine — walk past one to attune, then travel between them |
 | **The Peaks**     | An impassable ring of snow-capped mountains sealing the valley; the bridge is the only crossing |
 
-Old Maro stands in the square and knows this realm well — talk to him often.
+Old Maro keeps a hut on the square and knows this realm well — talk to him often.
 
 ## Skills
 
@@ -224,7 +244,7 @@ Ten skills are live, all running on the authentic-feeling XP curve
 | Mining ⛏        | Copper/tin at 1, iron at 10, coal at 20, gold at 40 | —                            |
 | Fishing 🐟      | Shrimp by hand; trout at the eastern current      | Trout: level 20 + rod + feather|
 | Smithing 🔨     | Smelt bars at the furnace, forge blades at the anvil | Steel: level 30             |
-| Cooking 🍳      | Cook catch, meat and eggs at the campfire         | Steak: level 5, heals 6        |
+| Cooking 🍳      | Cook catch, meat and eggs on the bonfire          | Steak: level 5, heals 6        |
 
 The full 23-skill grid is already stubbed in the UI — the rest light up as
 quests and deeper systems arrive.
@@ -241,22 +261,24 @@ quests and deeper systems arrive.
 | Left-click a goblin or brigand              | Fight — auto-attacks until it falls              |
 | Left-click a cow or chicken                 | Farm it — meat, bones and feathers               |
 | Click loot on the ground                    | Pick it up — coins, blades, eggs and more        |
-| Click an egg on the ground                  | Gather it — fry it at the campfire               |
+| Click an egg on the ground                  | Gather it — fry it on the bonfire                |
 | Click bones in your inventory               | Bury them for Prayer XP                          |
-| Left-click furnace / anvil / campfire       | Open crafting, then pick a recipe                |
-| Left-click the bank booth                   | Deposit and withdraw                             |
+| Left-click furnace / anvil / bonfire        | Open crafting, then pick a recipe                |
+| Left-click a bank booth or Hesta            | Deposit and withdraw                             |
 | Left-click Roka                             | Buy tools, sell your haul                        |
 | Talk to someone with a ! over their head    | Take on a quest (gold) or a daily job (blue)     |
 | Talk to someone with a ? over their head    | Hand in a finished quest step                    |
 | Click an XP bottle in your inventory        | Pour its XP into the skill (combat: choose)      |
 | Click food in your inventory                | Eat it (+HP)                                     |
 | Click a tool in your inventory              | Wield it — better tiers work faster              |
-| Click ore, bars or raw food, then a target  | Use it there — furnace, anvil, campfire, bank    |
+| Click ore, bars or raw food, then a target  | Use it there — furnace, anvil, bonfire, bank     |
 | Drag an inventory item                      | Move it, deposit it in the bank, or drop it      |
 | Shift-click an inventory item               | Drop it                                          |
 | Click a skill                               | Open its guide — unlocks, tools, recipes         |
 | Click a blessing in the Prayer tab          | Switch it on or off (drains prayer points)       |
 | Left-click the altar                        | Pray — refill your prayer points                 |
+| Left-click a waygate                        | Travel to any waygate you've attuned to          |
+| Walk into a building                        | Its roof fades so you can see inside             |
 | Drag a side-panel tab onto another pane     | Dock it above / below, or group it there         |
 | Gear button in the side panel               | Settings — zoom, render mode, music and effects volume |
 | `Esc`                                       | Close any panel, or put down a held item         |
@@ -275,6 +297,10 @@ quests and deeper systems arrive.
   (Karplus–Strong strings, flute, horn, pads, drums) in a generated reverb
 - BFS pathfinding, table-driven loot, resource respawns, wandering livestock,
   mountain-sealed world bounds
+- **Region-built world** — Greyhallow, the Vale and the crypt are each
+  authored in local coordinates and stamped onto one grid; buildings are
+  walls, a floor and a doorway, with roofs drawn over them that fade out
+  while you're inside
 - Autosave to `localStorage`, debounced plus on-exit
 
 ```
@@ -284,14 +310,15 @@ ForgeBound/
 ├── ROADMAP.md           # planned work for upcoming versions
 ├── src/
 │   ├── game/            # the engine
-│   │   ├── map.ts       #   procedural tile world + mountain bounds
+│   │   ├── map.ts       #   the realm's regions, buildings, waygates + mountain bounds
+│   │   ├── village.ts   #   walls, floors, roofs, chapel, crypt and waygate art
 │   │   ├── data.ts      #   items, resources, recipes, loot, shop stock
 │   │   ├── useGame.ts   #   the tick loop — actions, combat, economy, saves
 │   │   ├── pathfinding.ts
 │   │   ├── render.ts    #   dual-mode canvas renderer + lighting
 │   │   ├── xp.ts        #   the XP curve + skill table
 │   │   ├── audio.ts     #   WebAudio mixer + sound effects
-│   │   ├── music.ts     #   sequencer, instruments and the four themes
+│   │   ├── music.ts     #   sequencer, instruments and the six themes
 │   │   ├── soundscape.ts #  ambience that follows the hero
 │   │   └── types.ts
 │   └── components/      # login, HUD, panels, modals, event log
@@ -299,8 +326,8 @@ ForgeBound/
 ```
 
 **Good places to start extending:** new items, resources and recipes live in
-`src/game/data.ts`; new terrain in `src/game/map.ts` (push the mountains back
-to grow the world); new gameplay loops in the tick inside `src/game/useGame.ts`.
+`src/game/data.ts`; new terrain in `src/game/map.ts` (each region is a
+block of its own; `raise()` puts up a building); new gameplay loops in the tick inside `src/game/useGame.ts`.
 
 **Cutting a release:** bump `"version"` in `package.json` (the page title,
 login screen and log pick it up on build), move the changelog's notes under a
@@ -321,8 +348,9 @@ reach the login screen only through their `- **Teaser:**` lines.
 - [x] v0.4.2 — Prayer: prayer points, combat blessings, an altar, docked side panels, new minimap
 - [x] v0.4.3 — Quests: Old Maro's quest chains, Roka's daily Supply Runs, XP bottles, quest markers
 - [x] v0.4.4 — Sound & Score: four original themes, a full sound-effects pass, ambience and NPC voices
-- [ ] v0.5.0 — a ~5× wider realm, the Wildwood, Fletching & Ranged
-- [ ] v0.6.0 — the Vale square rebuilt as a proper village
+- [x] v0.5.0 — The Wider Realm: ~5× the Vale, a village square, Greyhallow chapel, the Restless Crypt, waygates
+- [ ] v0.5.x — the Wildwood, Firemaking, Fletching & Ranged, more regions
+- [ ] v0.6.0 — the rest of the village: homes, an inn, a market
 - [ ] Light up the remaining 13 skills
 - [ ] Deeper crafting chains (fletching, crafting, leather)
 

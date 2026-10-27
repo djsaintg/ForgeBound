@@ -3,6 +3,71 @@
 All notable changes to **ForgeBound**. The format is based on
 [Keep a Changelog](https://keepachangelog.com/), and this project follows semver.
 
+## [0.5.0] — Gamma v0.5.0 · The Wider Realm — 2026-10-27
+
+The valley grows up and out: about five times the ground, a proper village
+on the square, a chapel and churchyard to the west, and a crypt beneath it
+for the first Prayer quest.
+
+### Added
+
+- The Vale is spread out to about 5× its old area (≈2.2× each way), with
+  every place kept in the same spot relative to the others. The pasture,
+  coop, gully and mine grew with it: six cows, six hens, seven Goblin
+  Warriors, three Bramble Brigands, fourteen rocks (a second gold) and two
+  of each fishing spot
+- A village on Vale Square, one building on each corner, set back so half
+  of each stands on the grass:
+  - The Smithy: the furnace and anvil, under a slate roof with a smoking
+    chimney
+  - The Bank of ForgeBound: a row of booths and Hesta, a new teller to
+    talk to or bank with
+  - Roka's Trading Post: Roka and her shelves
+  - Old Maro's Hut: Maro, now indoors
+- Buildings have walls, a doorway and a roof; the roof of the building
+  you're in fades away so you can see inside. A sign hangs by every door
+- A 2×2 bonfire in the middle of the square, for cooking from any side,
+  throwing a wide light at night
+- Greyhallow, west past the Westwood: a stone chapel with stained glass,
+  pews, a bell tower and the altar, kept by Brother Cael, a new NPC; and a
+  fenced churchyard of gravestones over the old crypt
+- The Restless Crypt, Brother Cael's quest (needs 4 quest points): bless
+  five bones, lay five Restless Dead to rest in the crypt's burial chamber,
+  then defeat the Hollow Warden in the sanctum. Rewards 120 coins, a large
+  Prayer XP bottle, 2 quest points and a new blessing
+- The crypt: a dark underground level lit by candle stands, with its own
+  altar, sarcophagi and new foes: the Restless Dead (level 8) and the
+  Hollow Warden (level 15)
+- Spirit Ward, a blessing taught by The Restless Crypt: foes' hardest blow
+  is 1 weaker
+- Waygates at Vale Square, Greyhallow and Keldrek Mine. Walk past one to
+  attune to it, then travel between any you know: the hero fades out into
+  a column of light and fades back in at the other gate
+- Two new themes: Bells of Greyhallow (a slow air for the chapel and
+  churchyard) and Beneath the Stones (for the crypt)
+- Voices for Hesta and Brother Cael; sounds for the waygates, the crypt
+  door and the rattling dead
+
+### Changed
+
+- The minimap is a radar: a fixed frame that follows the hero at any zoom
+  (six steps, from most of the realm to up close), showing roofs from
+  above and only the crypt while you're in it
+- The mountain border is a slim rim now that the minimap never covers
+  playable ground
+- The altar moved from the square to Greyhallow Chapel
+- The coop's gate is on its north side, facing the road
+- Quest steps, Old Maro's and Roka's lines, tips and Prayer messages all
+  point to where things are now: the smithy, the bank, the bonfire and the
+  chapel
+- Old saves carry over: your position and anything on the ground move to
+  the same place in the wider Vale
+
+### Fixed
+
+- Bramble Brigands' name tags showed level 9; they're level 11
+- Trout spots sit by the south bank, within reach of the wider river
+
 ## [0.4.4] — Gamma v0.4.4 · Sound & Score — 2026-10-26
 
 Give the realm a voice: an original score with a theme for each corner of
