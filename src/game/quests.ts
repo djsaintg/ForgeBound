@@ -5,7 +5,7 @@
 // Line templates: {n} = progress so far (or how many are in the backpack for a
 // "bring" step), {need} = how many the step wants, {qp} = the hero's quest
 // points, {name} = the hero's name.
-import type { GameState, ItemId, NpcId, QuestEvent, QuestId } from "./types";
+import type { BlessingId, GameState, ItemId, NpcId, QuestEvent, QuestId } from "./types";
 import { SUPPLY_RUNS, bottleId } from "./data";
 
 export type QuestStep =
@@ -32,7 +32,7 @@ export interface QuestDef {
   accept: string[];
   decline: string[];
   steps: QuestStep[];
-  reward: { coins?: number; items?: ItemId[]; choice?: { prompt: string; items: ItemId[] }; qp: number };
+  reward: { coins?: number; items?: ItemId[]; choice?: { prompt: string; items: ItemId[] }; blessing?: BlessingId; qp: number };
   /** What the giver says once it's done, in place of the quest. */
   afterword: string;
 }
@@ -49,7 +49,7 @@ export const QUESTS: QuestDef[] = [
       "The hens there are plump and not much for fighting back. A good first scrap for a young one. Bring me three raw chicken, would you?",
     ],
     accept: [
-      "Splendid. The coop's south-east of the square. Left-click a hen to fight it.",
+      "Splendid. The coop's just east of the square, past my hut. The gate's on the road side. Left-click a hen to fight it.",
       "If you'd rather hit harder than true, the Gear tab lets you choose what your swings train.",
     ],
     decline: ["No hurry. The hens aren't going anywhere. Well, they wander, but not far."],
@@ -87,19 +87,19 @@ export const QUESTS: QuestDef[] = [
       "And then, and this is the important part, cook one into a steak. A fighter who can't cook is a fighter who goes hungry.",
       "Steak takes a little skill at the fire: level 5 Cooking. If you're not there yet, practise on shrimp or chicken first.",
     ],
-    accept: ["Good. The pasture's just north of the square. Mind their horns."],
+    accept: ["Good. The pasture's north of the square, behind the smithy. Mind their horns."],
     decline: ["The cows will keep. They're very good at standing still."],
     steps: [
       {
         kind: "bring", item: "raw_beef", n: 3,
         goal: "Bring Old Maro 3 raw beef from the north pasture",
         checkIn: ["Three raw beef from the north pasture. You've {n} of {need} in your pack."],
-        done: ["Fine cuts, these. Now cook one into a steak at the campfire and show me."],
+        done: ["Fine cuts, these. Now cook one into a steak on the bonfire in the middle of the square and show me."],
       },
       {
         kind: "do", event: { kind: "make", item: "cooked_beef" }, n: 1,
-        goal: "Cook a steak at the campfire (Cooking 5)",
-        checkIn: ["Cook one steak at the campfire. Raw beef on the fire, and level 5 Cooking. Practise on shrimp or chicken if you need to."],
+        goal: "Cook a steak on the bonfire (Cooking 5)",
+        checkIn: ["Cook one steak on the bonfire in the square. Raw beef on the fire, and level 5 Cooking. Practise on shrimp or chicken if you need to."],
         done: [
           "A proper steak! You're ready for more than livestock.",
           "Grublin Gully lies north-east. The goblins there steal from our coop. When you've a little more experience under your belt, come and ask me about them.",
@@ -124,7 +124,7 @@ export const QUESTS: QuestDef[] = [
       "The gully goblins have been raiding our coop at night. Drive them back: defeat five Goblin Warriors.",
       "Bring food. The Bramble Brigands deeper in are another matter entirely. Leave them be for now.",
     ],
-    accept: ["Brave. Grublin Gully is north-east, past the pasture. Eat before you're hurt, not after."],
+    accept: ["Brave. Grublin Gully is up the north road, north-east of the square. Eat before you're hurt, not after."],
     decline: ["Wise, perhaps. Come back when you feel ready."],
     steps: [
       {
@@ -148,8 +148,8 @@ export const QUESTS: QuestDef[] = [
     giver: "maro",
     blurb: "Logs for the fire, bronze from the furnace, and a first blade.",
     offer: [
-      "Every adventurer should know how metal is made. Start simple: bring me five logs to keep the square's fire fed.",
-      "Then I'll show you the furnace and the anvil.",
+      "Every adventurer should know how metal is made. Start simple: bring me five logs to keep the square's bonfire fed.",
+      "Then I'll send you over to the smithy, to the furnace and the anvil.",
     ],
     accept: ["The Westwood's full of trees, just west of here. Left-click one with an axe in your pack."],
     decline: ["The fire will burn a while yet. Come back when you're ready."],
@@ -160,14 +160,14 @@ export const QUESTS: QuestDef[] = [
         checkIn: ["Five logs for the fire. You've {n} of {need} in your pack."],
         done: [
           "Good dry wood, thank you. One day I'll teach you to light a fire of your own.",
-          "Now mine copper and tin at Keldrek Mine, east along the road, and smelt three bronze bars at the furnace. One of each ore makes a bar.",
+          "Now mine copper and tin at Keldrek Mine, east along the road, and smelt three bronze bars at the furnace in the smithy. One of each ore makes a bar.",
         ],
       },
       {
         kind: "do", event: { kind: "make", item: "bronze_bar" }, n: 3,
-        goal: "Smelt 3 bronze bars at the furnace",
+        goal: "Smelt 3 bronze bars at the smithy's furnace",
         checkIn: ["Three bronze bars from the furnace: copper and tin, one of each. {n} of {need} smelted."],
-        done: ["Three bars. Take one to the anvil and smith a bronze dagger, then show it to me."],
+        done: ["Three bars. Take one to the anvil, next to the furnace, and smith a bronze dagger. Then bring it to show me."],
       },
       {
         kind: "show", item: "bronze_dagger",
@@ -189,7 +189,7 @@ export const QUESTS: QuestDef[] = [
       "A blade is half of it. Armour is the other half. Smelt three more bronze bars, then hammer them into a platebody.",
       "A platebody needs level 5 Smithing. Daggers and swords at the anvil will get you there.",
     ],
-    accept: ["Good. Same furnace, same anvil, more bars."],
+    accept: ["Good. Same smithy, same furnace, same anvil, more bars."],
     decline: ["The anvil will wait for you."],
     steps: [
       {
@@ -259,7 +259,7 @@ export const QUESTS: QuestDef[] = [
     blurb: "Catch, cook and eat: how to heal out here.",
     offer: [
       "Out here, food is how you heal. And fish is the easiest food there is.",
-      "Net five shrimp from the river, south of the square.",
+      "Net five shrimp from the river, south of the square over the bridge road.",
     ],
     accept: ["Look for the swirls in the shallows. Left-click them and you'll wade in after them."],
     decline: ["The river will keep flowing."],
@@ -268,12 +268,12 @@ export const QUESTS: QuestDef[] = [
         kind: "do", event: { kind: "gather", item: "raw_shrimp" }, n: 5,
         goal: "Net 5 shrimp from the river",
         checkIn: ["Five shrimp from the shallows. {n} of {need} caught."],
-        done: ["Now cook three of them at the campfire. Raw shrimp will do you no good at all."],
+        done: ["Now cook three of them on the bonfire in the middle of the square. Raw shrimp will do you no good at all."],
       },
       {
         kind: "do", event: { kind: "make", item: "shrimp" }, n: 3,
-        goal: "Cook 3 shrimp at the campfire",
-        checkIn: ["Cook three shrimp at the campfire. {n} of {need} cooked."],
+        goal: "Cook 3 shrimp on the bonfire",
+        checkIn: ["Cook three shrimp on the bonfire in the square. {n} of {need} cooked."],
         done: ["Next time you're hurt, eat one. Watch your health come back. That's the whole secret."],
       },
       {
@@ -289,11 +289,62 @@ export const QUESTS: QuestDef[] = [
     reward: { items: ["fly_rod", bottleId("fishing", "small")], qp: 1 },
     afterword: "Caught anything big lately? Trout's a fine supper.",
   },
+
+  // ---------------------------------------------------------- Greyhallow --
+  {
+    id: "restless_crypt",
+    name: "The Restless Crypt",
+    giver: "cael",
+    blurb: "Something stirs in the old crypt beneath Greyhallow's churchyard.",
+    minQp: 4,
+    locked: [
+      "You've a kind face, but this is no errand for someone fresh to the road. The dead below hit back.",
+      "Help the folk of the Vale a while longer. Come back with 4 quest points and we'll speak again. You have {qp}.",
+    ],
+    offer: [
+      "The crypt beneath our churchyard was sealed the year the goblins came down from the gully. We buried our dead in haste, without the proper rites.",
+      "And now they will not rest. At night I hear them below the stones, walking. Will you go down and lay them to rest?",
+      "First I need bones to bless. Five, from any honest fight. The blessing goes with you into the dark.",
+    ],
+    accept: ["Thank you, friend. Bring me five bones, and I'll unseal the crypt door. It's at the top of the churchyard."],
+    decline: ["I understand. The crypt has waited this long. Pray it waits a little longer."],
+    steps: [
+      {
+        kind: "bring", item: "bones", n: 5,
+        goal: "Bring Brother Cael 5 bones to bless",
+        checkIn: ["Five bones for the blessing. You have {n} of {need} with you."],
+        done: [
+          "Rest now, all of you. There. They carry the blessing, and so do you.",
+          "I've unsealed the crypt door. Go down, and lay five of the Restless Dead to rest. Take food, and Stoneskin if you have it.",
+        ],
+      },
+      {
+        kind: "do", event: { kind: "kill", foe: "restless" }, n: 5,
+        goal: "Lay 5 of the Restless Dead to rest in the crypt",
+        checkIn: ["Five of the Restless Dead, in the burial chamber below. {n} laid to rest so far."],
+        done: [
+          "Five at peace. But you say they rose again behind you?",
+          "Then it's as I feared. Something in the sanctum at the far end keeps them walking: the Hollow Warden, the crypt's old keeper. End its watch, and they'll sleep.",
+        ],
+      },
+      {
+        kind: "do", event: { kind: "kill", foe: "warden" }, n: 1,
+        goal: "Defeat the Hollow Warden in the crypt's sanctum",
+        checkIn: ["The Hollow Warden waits in the sanctum, past the burial chamber. It hits hard. Pray at the old altar there if you need to."],
+        done: [
+          "It's quiet. For the first time in years, it's quiet under the stones. You've done Greyhallow a great kindness.",
+          "Let me teach you a prayer the old wardens used. Spirit Ward: it takes the edge off any blow. You'll find it in your Prayer tab.",
+        ],
+      },
+    ],
+    reward: { coins: 120, items: [bottleId("prayer", "large")], blessing: "spirit_ward", qp: 2 },
+    afterword: "The churchyard sleeps soundly now. So do I.",
+  },
 ];
 
 export const QUEST_BY_ID: Record<QuestId, QuestDef> = Object.fromEntries(QUESTS.map((q) => [q.id, q])) as Record<QuestId, QuestDef>;
 
-export const NPC_NAME: Record<NpcId, string> = { maro: "Old Maro", roka: "Roka" };
+export const NPC_NAME: Record<NpcId, string> = { maro: "Old Maro", roka: "Roka", hesta: "Hesta", cael: "Brother Cael" };
 
 /** Does a hero action count for a quest step's event? */
 export function eventMatches(want: QuestEvent, got: QuestEvent): boolean {

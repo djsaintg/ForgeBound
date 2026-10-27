@@ -24,7 +24,7 @@ const byLevel = (a: GuideRow, b: GuideRow) => (a.level ?? 0) - (b.level ?? 0);
 const itemsOf = (cat: ItemCat) =>
   (Object.values(ITEMS)).filter((d) => d.cat === cat).sort((a, b) => (a.tier ?? 0) - (b.tier ?? 0));
 
-const STATION_TITLE = { furnace: "At the furnace", anvil: "At the anvil", fire: "Over the campfire" } as const;
+const STATION_TITLE = { furnace: "At the furnace", anvil: "At the anvil", fire: "Over the bonfire" } as const;
 
 export function skillGuide(skill: SkillId): { sections: GuideSection[]; notes: string[] } {
   const sections: GuideSection[] = [];
@@ -120,7 +120,7 @@ export function skillGuide(skill: SkillId): { sections: GuideSection[]; notes: s
         title: "Blessings",
         rows: BLESSINGS.map((b) => ({ label: `${b.icon} ${b.name}`, level: b.level, detail: `${b.effect} · 1 point / ${b.drainMs / 1000}s` })),
       });
-      notes.push("Your Prayer level is your most prayer points. Switch blessings on in the Prayer tab, and pray at the altar in Vale Square to refill them. Bones drop from every foe.");
+      notes.push("Your Prayer level is your most prayer points. Switch blessings on in the Prayer tab, and pray at an altar to refill them: there is one in Greyhallow Chapel, and another deep in its crypt. Bones drop from every foe.");
       break;
   }
 

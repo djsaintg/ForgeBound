@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import type { GameApi } from "../game/useGame";
 import type { Action, GameState } from "../game/types";
-import { ITEMS, RECIPES, RESOURCES } from "../game/data";
+import { FOES, ITEMS, RECIPES, RESOURCES } from "../game/data";
 
 const GATHER_VERB: Record<string, string> = { woodcutting: "Chopping", mining: "Mining", fishing: "Fishing at" };
 const STATION_VERB: Record<string, string> = { furnace: "Smelting", anvil: "Smithing", fire: "Cooking" };
@@ -9,8 +9,8 @@ const STATION_VERB: Record<string, string> = { furnace: "Smelting", anvil: "Smit
 function foeName(g: GameState, a: Extract<Action, { kind: "combat" }>): string {
   if (a.targetKind === "cow") return "the pasture cow";
   if (a.targetKind === "chicken") return "the coop hen";
-  const gb = g.goblins?.find((x) => x.id === a.targetId);
-  return gb && gb.maxHp >= 22 ? "the Bramble Brigand" : "the Goblin Warrior";
+  const f = g.foes?.find((x) => x.id === a.targetId);
+  return f ? `the ${FOES[f.foe].name}` : "the foe";
 }
 
 /** What the hero is doing right now, or null when idle. */

@@ -88,6 +88,13 @@ export function WorldCanvas({ api }: { api: GameApi }) {
                 lastPosRef.current = { x: g.x, y: g.y };
             }
 
+            // A long jump (a waygate, the crypt stairs) cuts straight to the
+            // new spot rather than sliding the hero and camera across the map
+            if (Math.abs(g.x - dispRef.current.x) + Math.abs(g.y - dispRef.current.y) > 4) {
+                dispRef.current = { x: g.x, y: g.y };
+                lastPosRef.current = { x: g.x, y: g.y };
+            }
+
             // smooth sub-tile follow
             const k = Math.min(1, dt / 130);
             dispRef.current.x += (g.x - dispRef.current.x) * k;

@@ -45,6 +45,7 @@ REQUIRED_FILES=(
   src/components/ItemIcon.tsx src/components/WorldCanvas.tsx src/components/Minimap.tsx
   src/components/EventFeed.tsx src/components/XpOrbs.tsx src/components/SidePanels.tsx
   src/components/Modals.tsx src/components/LevelUpOverlay.tsx src/components/LoginScreen.tsx
+  src/game/village.ts src/game/quests.ts src/game/music.ts src/game/soundscape.ts
 )
 
 preflight() {

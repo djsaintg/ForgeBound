@@ -436,19 +436,20 @@ function Prayer({ api, g }: { api: GameApi; g: GameState }) {
           />
         </div>
         <div className="mt-1 text-[10px] text-[#6a5a3a]">
-          {g.blessings.length ? `Draining ${drainPerMin.toFixed(1).replace(/\.0$/, "")} point${drainPerMin === 1 ? "" : "s"} a minute` : "Recharge at the altar in Vale Square"}
+          {g.blessings.length ? `Draining ${drainPerMin.toFixed(1).replace(/\.0$/, "")} point${drainPerMin === 1 ? "" : "s"} a minute` : "Recharge at the altar in Greyhallow Chapel"}
         </div>
       </div>
       <div className="flex flex-col gap-1">
         {BLESSINGS.map((b) => {
-          const locked = lvl < b.level;
+          const untaught = !!b.quest && !g.quests[b.quest]?.done;
+          const locked = lvl < b.level || untaught;
           const on = g.blessings.includes(b.id);
           return (
             <button
               key={b.id}
               onClick={() => api.toggleBlessing(b.id)}
               aria-pressed={on}
-              title={locked ? `Needs level ${b.level} Prayer` : `${b.effect}. Drains 1 point every ${b.drainMs / 1000}s. Click to turn ${on ? "off" : "on"}.`}
+              title={untaught ? "Taught by Brother Cael's quest, The Restless Crypt" : locked ? `Needs level ${b.level} Prayer` : `${b.effect}. Drains 1 point every ${b.drainMs / 1000}s. Click to turn ${on ? "off" : "on"}.`}
               className={`flex items-center gap-2 rounded-sm border px-2 py-1.5 text-left transition-all ${
                 on
                   ? "border-[#e8e4f8] bg-gradient-to-b from-[#2c2a3a] to-[#1a1824] shadow-[0_0_10px_rgba(220,220,255,0.3)]"
@@ -468,7 +469,7 @@ function Prayer({ api, g }: { api: GameApi; g: GameState }) {
                 <span className="block text-[10px] leading-tight text-[#8a7a52]">{b.effect}</span>
               </span>
               <span className={`shrink-0 text-[10.5px] font-bold ${locked ? "text-[#ff8a72]" : on ? "text-[#e8e4f8]" : "text-[#c8b070]"}`}>
-                {on ? "ON" : `Lvl ${b.level}`}
+                {on ? "ON" : untaught ? "Quest" : `Lvl ${b.level}`}
               </span>
             </button>
           );

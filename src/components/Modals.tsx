@@ -12,6 +12,7 @@ import { enterFullscreen, exitFullscreen, fullscreenSupported, setFullscreenPref
 import { Maximize2, Minimize2, Monitor, Music, RotateCcw, Save, Sparkles, Volume2, VolumeX, ZoomIn } from "lucide-react";
 import { getAudioSettings, setAudioSettings } from "../game/audio";
 import { currentTheme } from "../game/music";
+import { GATES } from "../game/map";
 
 /** `drop` says what a backpack item dragged onto the window does (see SlotDrag). */
 function Backdrop({ onClose, children, drop = "keep" }: { onClose: () => void; children: React.ReactNode; drop?: "keep" | "bank" }) {
@@ -257,6 +258,34 @@ export function ShopModal({ api, g }: { api: GameApi; g: GameState }) {
                     )}
                 </div>
             </div>
+        </div>
+        </Backdrop>
+    );
+}
+
+// ---------------------------------------------------------------- waygate --
+export function GateModal({ api, g }: { api: GameApi; g: GameState }) {
+    if (!g.gateOpen) return null;
+    const here = GATES.find((gt) => gt.id === g.gateOpen)!;
+    return (
+        <Backdrop onClose={api.closeGate}>
+        <Header title={`WAYGATE · ${here.name.toUpperCase()}`} onClose={api.closeGate} />
+        <div className="space-y-1.5 p-3">
+            {GATES.filter((gt) => gt.id !== here.id).map((gt) => {
+                const known = g.gates.includes(gt.id);
+                return (
+                    <div key={gt.id} className="flex items-center gap-2 rounded-sm border border-[#2a2115] bg-[#171008] px-3 py-2">
+                        <span className="text-[14px]">{known ? "✨" : "🔒"}</span>
+                        <span className={`flex-1 text-[12.5px] font-bold ${known ? "text-[#e0d6c0]" : "text-[#5a4c32]"}`}>{gt.name}</span>
+                        {known
+                            ? <button onClick={() => api.travel(gt.id)} className="bank-btn">Travel</button>
+                            : <span className="text-[10.5px] text-[#6a5a3a]">Not attuned: walk there once</span>}
+                    </div>
+                );
+            })}
+            <p className="pt-1 text-[10.5px] leading-snug text-[#6a5a3a]">
+                Pass close by a waygate to attune to it. Travel is free, and works between any two you know.
+            </p>
         </div>
         </Backdrop>
     );

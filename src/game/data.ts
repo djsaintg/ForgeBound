@@ -114,7 +114,7 @@ export const OBJ_TO_STATION: Record<string, StationId | "bank"> = {
 export const STATION_NAMES: Record<StationId, string> = {
   furnace: "Furnace",
   anvil: "Anvil",
-  fire: "Campfire",
+  fire: "Bonfire",
 };
 
 export const RECIPES: RecipeDef[] = [
@@ -155,14 +155,15 @@ export const SHOP_STOCK: ItemId[] = [
 export const TOOL_SPEED: Record<number, number> = { 0: 1.55, 1: 1, 2: 0.85, 3: 0.72, 4: 0.6 };
 
 export const MARO_LINES = [
-  "Welcome to ForgeBound! You can engage in combat with cows in the north pasture, chickens in the S.E. coop, or the goblins of Grublin Gully to the N.E.!",
+  "Welcome to ForgeBound! You can fight the cows in the north pasture, the hens in the coop east of the square, or the goblins of Grublin Gully to the north-east.",
   "Goblins carry coins and sometimes drop bronze swords or platebodies when vanquished. Pick up their dropped loot from the ground!",
-  "Chickens regularly lay fresh farm eggs in the coop straw! Gather eggs, raw beef, and raw chicken to cook over the campfire.",
+  "Chickens regularly lay fresh farm eggs in the coop straw! Gather eggs, raw beef and raw chicken to cook on the bonfire in the middle of the square.",
   "Don't forget to bury monster bones from your backpack—it honors the departed and earns valuable Prayer XP!",
-  "Chop trees in the Westwood, then smelt copper and tin into bronze at the furnace north of Vale Square.",
+  "Chop trees in the Westwood, then smelt copper and tin into bronze at the furnace in the smithy, on the north side of the square.",
   "Keldrek Mine is east along the road. Iron hides at level 10, coal at 20, and gold at 40.",
-  "Bury bones to grow your Prayer, then call on blessings in the Prayer tab. When your prayer runs dry, kneel at the altar in the square.",
-  "Everything you own can be banked at the booth. Try toggling between 8-bit Legacy and 64-bit Remastered mode in the settings!",
+  "Bury bones to grow your Prayer, then call on blessings in the Prayer tab. When your prayer runs dry, kneel at the altar in Greyhallow Chapel, west past the Westwood.",
+  "Everything you own can be banked with Hesta, across the square in the Bank of ForgeBound. Try toggling between 8-bit Legacy and 64-bit Remastered mode in the settings!",
+  "The realm's far wider than it was. Step up to a waygate to attune to it, and you can travel between any you've attuned. There's one right here in the square.",
 ];
 
 export const SELL_RATIO = 0.55;
@@ -181,6 +182,7 @@ export const ROKA_LINES = [
   "Roka: A mithril pickaxe bites through rock like butter. Costly, mind, but worth every coin.",
   "Roka: Those goblins up the gully drop bronze from time to time. I'll take it off your hands.",
   "Roka: Trout won't bite a bare hook. Pluck some feathers from the coop hens first.",
+  "Roka: New shop, same prices! Well, nearly the same. Roofs don't pay for themselves.",
 ];
 
 /** Inspect text for every item, shown in the Adventurer's Log. */
@@ -215,7 +217,7 @@ export const ITEM_EXAMINE: Record<ItemId, string> = {
   fly_rod: "A whippy rod for fly fishing. Each cast needs a feather.",
   bones: "Bones of the fallen. Bury them for Prayer.",
   raw_beef: "A raw cut of beef. Cook it on the fire.",
-  cooked_beef: "A thick steak, seared on the campfire.",
+  cooked_beef: "A thick steak, seared over the fire.",
   raw_chicken: "Raw chicken. Don't eat it like this.",
   cooked_chicken: "A roast chicken, crisp and golden.",
   feathers: "Soft hen feathers. Fly fishers tie them to their hooks.",
@@ -228,13 +230,16 @@ export const ITEM_EXAMINE: Record<ItemId, string> = {
 /** Melee swing-time multiplier by weapon tier (0 = bare hands, slowest). */
 export const SWING_SPEED: Record<number, number> = { 0: 1.5, 1: 1, 2: 0.9, 3: 0.8, 4: 0.7 };
 
-export type FoeId = "cow" | "chicken" | "goblin" | "brigand";
+export type FoeId = "cow" | "chicken" | "goblin" | "brigand" | "restless" | "warden";
 
-export const FOES: Record<FoeId, { name: string; level: number; hp: number; about: string }> = {
-  chicken: { name: "Coop hen", level: 1, hp: 3, about: "A plump hen. It sheds feathers and lays eggs." },
-  cow: { name: "Pasture cow", level: 2, hp: 8, about: "A placid cow, chewing the cud." },
-  goblin: { name: "Goblin Warrior", level: 5, hp: 12, about: "A scrappy goblin of the gully clan." },
-  brigand: { name: "Bramble Brigand", level: 11, hp: 22, about: "A hulking brute of the deep gully. Hits hard." },
+/** Every foe: `maxHit` is its hardest blow back, `respawn` how long it stays down (ms). */
+export const FOES: Record<FoeId, { name: string; level: number; hp: number; maxHit: number; respawn: number; about: string }> = {
+  chicken: { name: "Coop hen", level: 1, hp: 3, maxHit: 0, respawn: 12000, about: "A plump hen. It sheds feathers and lays eggs." },
+  cow: { name: "Pasture cow", level: 2, hp: 8, maxHit: 1, respawn: 12000, about: "A placid cow, chewing the cud." },
+  goblin: { name: "Goblin Warrior", level: 5, hp: 12, maxHit: 3, respawn: 18000, about: "A scrappy goblin of the gully clan." },
+  brigand: { name: "Bramble Brigand", level: 11, hp: 22, maxHit: 3, respawn: 18000, about: "A hulking brute of the deep gully. Hits hard." },
+  restless: { name: "Restless Dead", level: 8, hp: 16, maxHit: 3, respawn: 20000, about: "Old bones that will not lie still. Something below keeps them walking." },
+  warden: { name: "Hollow Warden", level: 15, hp: 45, maxHit: 5, respawn: 60000, about: "The crypt's ancient keeper, long dead and still on watch. Its blade is heavy." },
 };
 
 /** Combat blessings, lowest level first. Effects are applied in useGame's combat round. */
@@ -243,6 +248,7 @@ export const BLESSINGS: BlessingDef[] = [
   { id: "ox_might", name: "Ox's Might", icon: "🐂", level: 4, effect: "+1 maximum hit", drainMs: 20000 },
   { id: "mending", name: "Mending Light", icon: "💗", level: 7, effect: "Regain 1 HP every 6 seconds", drainMs: 30000 },
   { id: "clear_eye", name: "Clear Eye", icon: "👁️", level: 10, effect: "+10% accuracy", drainMs: 20000 },
+  { id: "spirit_ward", name: "Spirit Ward", icon: "🕯️", level: 8, effect: "Foes' hardest blow is 1 weaker", drainMs: 25000, quest: "restless_crypt" },
 ];
 
 export const BLESSING_BY_ID: Record<BlessingId, BlessingDef> = Object.fromEntries(

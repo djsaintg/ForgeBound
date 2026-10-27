@@ -4,6 +4,7 @@ import type {
   Action,
   BlessingId,
   DialogueOption,
+  FoeEnt,
   NpcId,
   QuestEvent,
   ChatKind,
@@ -39,11 +40,14 @@ import {
   SWING_SPEED,
   TOOL_SPEED,
 } from "./data";
-import { COW_SPAWNS, CHICKEN_SPAWNS, GOBLIN_SPAWNS, MAP_H, MAP_W, SPAWN, groundAt, objAt, walkable } from "./map";
+import {
+  CHICKEN_SPAWNS, COOP_PEN, COW_PEN, COW_SPAWNS, CRYPT_ARRIVE, CRYPT_DOOR_OUT, FOE_SPAWNS, GATES, SPAWN, STARTER_EGG,
+  groundAt, inPen, isUnderground, migrateOldTile, nearestWalkable, walkable, objAt, type GateId,
+} from "./map";
 import { adjacentTo, findPath } from "./pathfinding";
 import { MAX_XP, SKILLS, SKILL_BY_ID, fmt, levelForXp } from "./xp";
 import { sfx, type Ground } from "./audio";
-import { emote, jobOf, strikesDone } from "./anim";
+import { WARP_MS, emote, jobOf, strikesDone } from "./anim";
 import { NPC_NAME, QUESTS, currentStepOf, eventMatches, questPointsOf, stepProgressOf, today, type QuestDef } from "./quests";
 
 export const SAVE_KEY = "forgebound-save-v1";
@@ -51,7 +55,10 @@ const STEP_MS = 168;
 /** How close (tiles) the hero must be to talk to an NPC. */
 const TALK_RANGE = 2;
 // v2 (0.4.3) adds quests and Supply Runs; v1 saves load with none started.
-const SAVE_VERSION = 2;
+// v3 (0.5.0) is the wider realm: tiles moved, so older saves are migrated.
+const SAVE_VERSION = 3;
+/** How close (tiles) the hero must pass to attune to a waygate. */
+const ATTUNE_RANGE = 2;
 let uid = 100;
 
 /** Something clickable on a world tile: its actions (default first) and what using an item on it does. */
@@ -65,23 +72,20 @@ const nextId = () => uid++;
 /** What the hero's footsteps sound like on a tile. */
 function groundSound(x: number, y: number): Ground {
   const gch = groundAt(x, y);
-  return gch === "#" ? "stone" : gch === "," ? "path" : gch === "b" ? "wood" : gch === "_" ? "sand" : "grass";
+  return gch === "#" || gch === "q" || gch === "k" ? "stone" : gch === "," ? "path" : gch === "b" || gch === "p" || gch === "d" ? "wood" : gch === "_" ? "sand" : "grass";
 }
 
-function findObjChar(ch: string): { x: number; y: number } | null {
-  for (let y = 0; y < MAP_H; y++) {
-    for (let x = 0; x < MAP_W; x++) {
-      if (objAt(x, y) === ch) return { x, y };
-    }
-  }
-  return null;
-}
+/** A fresh set of goblins and restless dead at their spawn points. */
+const spawnFoes = (): FoeEnt[] => FOE_SPAWNS.map((f, idx) => {
+  const hp = FOES[f.foe].hp;
+  return { id: idx + 50, foe: f.foe, home: f.home, x: f.x, y: f.y, dx: f.x, dy: f.y, hp, maxHp: hp, respawn: 0, nextMove: 0, grunt: 0 };
+});
 
-const STATION_POS: Partial<Record<StationId, { x: number; y: number }>> = {};
-for (const ch of ["F", "A", "*"]) {
-  const p = findObjChar(ch);
-  if (p) STATION_POS[OBJ_TO_STATION[ch] as StationId] = p;
-}
+/** The tile someone arriving at a waygate steps out onto: just in front of it. */
+const gateArrival = (id: GateId) => {
+  const gt = GATES.find((q) => q.id === id)!;
+  return nearestWalkable(gt.x, gt.y + 1) ?? SPAWN;
+};
 
 function baseXp(): Record<SkillId, number> {
   const xp = {} as Record<SkillId, number>;
@@ -122,13 +126,10 @@ export function freshState(name: string): GameState {
     settingsOpen: false,
     cows: COW_SPAWNS.map((c, idx) => ({ id: idx + 1, x: c.x, y: c.y, dx: c.x, dy: c.y, hp: 8, maxHp: 8, respawn: 0, nextMove: 0, moo: 0 })),
     chickens: CHICKEN_SPAWNS.map((c, idx) => ({ id: idx + 20, x: c.x, y: c.y, dx: c.x, dy: c.y, hp: 3, maxHp: 3, respawn: 0, nextMove: 0, cluck: 0, nextEgg: 15000 + idx * 4000 })),
-    goblins: GOBLIN_SPAWNS.map((g, idx) => {
-      const brigand = idx >= 5; // the two deep-gully Bramble Brigands
-      return { id: idx + 50, x: g.x, y: g.y, dx: g.x, dy: g.y, hp: brigand ? 22 : 12, maxHp: brigand ? 22 : 12, respawn: 0, nextMove: 0, grunt: 0 };
-    }),
+    foes: spawnFoes(),
     groundItems: [
       // Starter wild farm egg sitting in the coop straw
-      { id: nextId(), item: "egg", n: 1, x: 43, y: 27, t: performance.now() },
+      { id: nextId(), item: "egg", n: 1, ...STARTER_EGG, t: performance.now() },
     ],
     counters: { gathered: 0, made: 0, kills: 0 },
     zoom: 2.2,
@@ -143,6 +144,9 @@ export function freshState(name: string): GameState {
     supply: null,
     supplyDay: {},
     dialogue: null,
+    gates: ["vale"],
+    gateOpen: null,
+    warp: null,
   };
 }
 
@@ -168,6 +172,7 @@ export function saveGame(g: GameState): boolean {
       quests: g.quests,
       supply: g.supply,
       supplyDay: g.supplyDay,
+      gates: g.gates,
     };
     localStorage.setItem(SAVE_KEY, JSON.stringify(payload));
     return true;
@@ -181,7 +186,7 @@ export function loadGame(): GameState | null {
     const raw = localStorage.getItem(SAVE_KEY);
     if (!raw) return null;
     const p = JSON.parse(raw);
-    if (p?.version !== 1 && p?.version !== SAVE_VERSION) return null;
+    if (p?.version !== 1 && p?.version !== 2 && p?.version !== SAVE_VERSION) return null;
     const g = freshState(p.name ?? "Adventurer");
     g.coins = Number(p.coins) || 0;
     g.hp = Number(p.hp) || 20;
@@ -191,15 +196,22 @@ export function loadGame(): GameState | null {
     }
     g.bank = p.bank ?? {};
     g.equipped = p.equipped ?? {};
-    g.x = Number(p.x) ?? SPAWN.x;
-    g.y = Number(p.y) ?? SPAWN.y;
-    // Migrate pre-expansion saves (core coords) into the padded map space
-    if (g.x < 8) { g.x += 8; g.y += 8; }
+    g.x = Number.isFinite(Number(p.x)) ? Number(p.x) : SPAWN.x;
+    g.y = Number.isFinite(Number(p.y)) ? Number(p.y) : SPAWN.y;
+    const oldMap = p.version !== SAVE_VERSION;
+    if (oldMap) {
+      // Migrate pre-expansion saves (core coords) into the padded map space,
+      // then onto the wider realm
+      if (g.x < 8) { g.x += 8; g.y += 8; }
+      ({ x: g.x, y: g.y } = migrateOldTile(g.x, g.y));
+    } else if (!walkable(g.x, g.y)) ({ x: g.x, y: g.y } = nearestWalkable(g.x, g.y) ?? SPAWN);
     g.counters = p.counters ?? { gathered: 0, made: 0, kills: 0 };
     if (typeof p.zoom === "number") g.zoom = p.zoom;
     if (p.graphicsMode) g.graphicsMode = p.graphicsMode;
     // Saved timestamps belong to the last session's clock, so loaded items get a fresh two minutes
-    if (Array.isArray(p.groundItems)) g.groundItems = p.groundItems.map((gi: GroundItem) => ({ ...gi, t: performance.now() }));
+    if (Array.isArray(p.groundItems)) {
+      g.groundItems = p.groundItems.map((gi: GroundItem) => ({ ...gi, ...(oldMap ? migrateOldTile(gi.x, gi.y) : {}), t: performance.now() }));
+    }
     // Older saves have no choice stored; a broken one with both off trains both
     const cx = p.combatXp ?? {};
     g.combatXp = { attack: cx.attack !== false, strength: cx.strength !== false };
@@ -210,6 +222,7 @@ export function loadGame(): GameState | null {
     if (p.quests && typeof p.quests === "object") g.quests = p.quests;
     if (SUPPLY_RUNS.some((r) => r.id === p.supply)) g.supply = p.supply;
     if (p.supplyDay && typeof p.supplyDay === "object") g.supplyDay = p.supplyDay;
+    if (Array.isArray(p.gates)) g.gates = GATES.filter((gt) => gt.id === "vale" || p.gates.includes(gt.id)).map((gt) => gt.id);
     return g;
   } catch {
     return null;
@@ -383,6 +396,7 @@ export function useGame() {
     gg.stationUI = null;
     gg.guide = null;
     gg.dialogue = null;
+    gg.gateOpen = null;
   };
 
   /** Walk over and open the bank, shop or a station's recipe list. */
@@ -406,7 +420,7 @@ export function useGame() {
    * Do something at x,y that needs the hero close by: within `range` tiles
    * it happens at once, further away the hero walks over first.
    */
-  const approach = (kind: "talk" | "pray", x: number, y: number, range: number, act: () => void) => {
+  const approach = (kind: "talk" | "pray" | "use", x: number, y: number, range: number, act: () => void) => {
     const gg = g();
     if (Math.max(Math.abs(gg.x - x), Math.abs(gg.y - y)) <= range) {
       act();
@@ -491,26 +505,83 @@ export function useGame() {
     ]);
   };
 
-  /** "Something else": back to the giver's main menu. */
+  /** "Something else": back to the NPC's main menu. */
   const back = (q: QuestDef | NpcId, x: number, y: number): DialogueOption => {
     const npc = typeof q === "string" ? q : q.giver;
-    return { label: "Something else.", run: () => (npc === "maro" ? talkMaro(x, y, ["Anything else?"]) : talkRoka(x, y, ["Anything else?"])) };
+    const again = ["Anything else?"];
+    const menu = { maro: talkMaro, roka: talkRoka, hesta: talkHesta, cael: talkCael }[npc];
+    return { label: "Something else.", run: () => menu(x, y, again) };
   };
 
-  const maroWork = (x: number, y: number) => {
+  /** What each quest-giver says when there's nothing new to offer. */
+  const NO_WORK: Partial<Record<NpcId, { allDone: string; busy: string; think: string }>> = {
+    maro: {
+      allDone: "Not just now, young one. You've done everything I've asked, and more besides.",
+      busy: "Nothing new just now. See to what you've already promised me first.",
+      think: "Let me think… there's always something needs doing.",
+    },
+    cael: {
+      allDone: "You've already given Greyhallow more than we could ask. Go in peace, friend.",
+      busy: "See to the crypt first. One burden at a time.",
+      think: "There is one thing weighing on me…",
+    },
+  };
+
+  const giverWork = (npc: NpcId, x: number, y: number) => {
     const gg = g();
-    // Offered: open ones, plus any held back only by quest points (so Maro can say why)
-    const open = QUESTS.filter((q) => q.giver === "maro" && !gg.quests[q.id] && (q.after ?? []).every((a) => gg.quests[a]?.done));
+    const lines = NO_WORK[npc]!;
+    // Offered: open ones, plus any held back only by quest points (so the giver can say why)
+    const open = QUESTS.filter((q) => q.giver === npc && !gg.quests[q.id] && (q.after ?? []).every((a) => gg.quests[a]?.done));
     if (!open.length) {
-      const allDone = QUESTS.filter((q) => q.giver === "maro").every((q) => gg.quests[q.id]?.done);
-      return say("maro", x, y, [allDone
-        ? "Not just now, young one. You've done everything I've asked, and more besides."
-        : "Nothing new just now. See to what you've already promised me first."], [back("maro", x, y), bye]);
+      const allDone = QUESTS.filter((q) => q.giver === npc).every((q) => gg.quests[q.id]?.done);
+      return say(npc, x, y, [allDone ? lines.allDone : lines.busy], [back(npc, x, y), bye]);
     }
     if (open.length === 1) return offerQuest(open[0], x, y);
-    say("maro", x, y, ["Let me think… there's always something needs doing."], [
+    say(npc, x, y, [lines.think], [
       ...open.map((q) => ({ label: q.name, run: () => offerQuest(q, x, y) })),
-      back("maro", x, y),
+      back(npc, x, y),
+    ]);
+  };
+  const maroWork = (x: number, y: number) => giverWork("maro", x, y);
+
+  /** Hesta, the bank's teller, behind the booths. */
+  const talkHesta = (x: number, y: number, pages?: string[]) =>
+    say("hesta", x, y, pages ?? ["Welcome to the Bank of ForgeBound. Your belongings are safe with us. What can I do for you?"], [
+      { label: "I'd like to bank.", run: () => { endTalk(); openAt("bank", x, y + 1); } },
+      {
+        label: "How does the bank work?",
+        run: () => say("hesta", x, y, [
+          "Anything you leave with us is kept for you, safe, for as long as you like. Use any booth, or ask me.",
+          "Coins stay in your purse, mind. We look after goods, not gold. Old bank policy.",
+        ], [back("hesta", x, y), bye]),
+      },
+      {
+        label: "Nice new building.",
+        run: () => say("hesta", x, y, ["Isn't it? No more counting coin in the rain. The vault's under the floor, before you ask. No, you can't see it."], [back("hesta", x, y), bye]),
+      },
+      bye,
+    ]);
+
+  /** Brother Cael, keeper of Greyhallow Chapel. */
+  const talkCael = (x: number, y: number, pages?: string[]) => {
+    const gg = g();
+    const mine = QUESTS.filter((q) => q.giver === "cael");
+    const active = mine.filter((q) => currentStep(q));
+    const done = mine.filter((q) => gg.quests[q.id]?.done);
+    const greeting = pages ?? (done.length
+      ? [done[0].afterword + " What can I do for you, {name}?"]
+      : ["Welcome to Greyhallow, traveller. The altar is open to all. Kneel there whenever your prayers run thin."]);
+    say("cael", x, y, greeting, [
+      ...active.map((q) => ({ label: `About "${q.name}"…`, run: () => aboutQuest(q, x, y) })),
+      { label: "Can I help with anything?", run: () => giverWork("cael", x, y) },
+      {
+        label: "Tell me about Greyhallow.",
+        run: () => say("cael", x, y, [
+          "Greyhallow was a village once, before the goblins. Now it's the chapel, the churchyard and me.",
+          "Folk still walk out from the Vale to pray. Easier now there's a waygate by the road. Attune to it and you'll never have to walk the Westwood again.",
+        ], [back("cael", x, y), bye]),
+      },
+      bye,
     ]);
   };
 
@@ -565,6 +636,22 @@ export function useGame() {
     say(q.giver, x, y, st.done, [back(q, x, y), bye]);
   };
 
+  /** Using an item on a quest-giver: hand in what a quest asked for, or a polite no. */
+  const giveTo = (npc: NpcId, slot: number, x: number, y: number) => {
+    const gg = g();
+    const s = gg.inv[slot];
+    if (!s) return;
+    const q = QUESTS.find((d) => {
+      const st = currentStep(d);
+      return d.giver === npc && st && st.kind !== "do" && st.item === s.item;
+    });
+    if (q) return speakTo(x, y, () => aboutQuest(q, x, y));
+    const nah = npc === "cael"
+      ? `Brother Cael: ${ITEMS[s.item].name}? Keep it, friend. The chapel wants for nothing but quiet.`
+      : `Old Maro: ${ITEMS[s.item].name}? Hold on to it, young one. You'll find a use for it.`;
+    speakTo(x, y, () => chat("npc", nah));
+  };
+
   const finishQuest = (q: QuestDef, choice?: ItemId) => {
     const gg = g();
     const p = gg.quests[q.id]!;
@@ -576,6 +663,7 @@ export function useGame() {
       addItem(it, 1);
       got.push(ITEMS[it].name.toLowerCase());
     }
+    if (q.reward.blessing) got.push(`the ${BLESSING_BY_ID[q.reward.blessing].name} blessing`);
     chat("sys", `🏆 Quest complete: ${q.name}! You receive ${got.join(", ")} and ${q.reward.qp} quest point${q.reward.qp > 1 ? "s" : ""}.`);
     sfx.quest();
   };
@@ -683,11 +771,14 @@ export function useGame() {
     if (gg.blessings.includes(id)) {
       gg.blessings = gg.blessings.filter((q) => q !== id);
       sfx.unbless();
+    } else if (b.quest && !gg.quests[b.quest]?.done) {
+      chat("err", `${b.name} is taught by finishing ${QUESTS.find((q) => q.id === b.quest)?.name ?? "a quest"}.`);
+      sfx.error();
     } else if (levelForXp(gg.xp.prayer) < b.level) {
       chat("err", `${b.name} needs level ${b.level} Prayer.`);
       sfx.error();
     } else if (gg.prayer <= 0) {
-      chat("err", "You have no prayer points left. Recharge them at the altar in Vale Square.");
+      chat("err", "You have no prayer points left. Recharge them at the altar in Greyhallow Chapel.");
       sfx.error();
     } else {
       gg.blessings = [...gg.blessings, id];
@@ -697,6 +788,78 @@ export function useGame() {
   };
 
   const blessed = (id: BlessingId) => g().blessings.includes(id);
+
+  // ------------------------------------------------- waygates & the crypt --
+
+  /** Step the hero to a far tile at once: waygates and the crypt stairs. */
+  const teleport = (to: { x: number; y: number }) => {
+    const gg = g();
+    cancelAction();
+    closeWindows();
+    gg.path = [];
+    gg.x = to.x;
+    gg.y = to.y;
+    gg.dialogue = null;
+    bump();
+  };
+
+  const openGate = (id: GateId) => {
+    const gg = g();
+    if (!gg.gates.includes(id)) attune(id);
+    gg.gateOpen = id;
+    sfx.gate();
+    bump();
+  };
+
+  const attune = (id: GateId) => {
+    const gg = g();
+    if (gg.gates.includes(id)) return;
+    gg.gates = GATES.filter((gt) => gt.id === id || gg.gates.includes(gt.id)).map((gt) => gt.id);
+    chat("sys", `✨ The waygate at ${GATES.find((gt) => gt.id === id)!.name} hums as you pass. You are attuned to it.`);
+    sfx.attune();
+  };
+
+  /**
+   * Travel from the open waygate to another attuned one. The hero fades out
+   * into the gate's light first; the jump itself happens in update().
+   */
+  const travel = (id: GateId) => {
+    const gg = g();
+    if (!gg.gateOpen || !gg.gates.includes(id) || id === gg.gateOpen || gg.warp) return;
+    cancelAction();
+    closeWindows();
+    gg.path = [];
+    const now = performance.now();
+    gg.warp = { ...gateArrival(id), at: now + WARP_MS };
+    emote.warpOutAt = now;
+    chat("info", `The stones flare, and ${gg.name} steps out at ${GATES.find((gt) => gt.id === id)!.name}.`);
+    sfx.teleport();
+    bump();
+  };
+
+  const cryptOpen = () => {
+    const p = g().quests.restless_crypt;
+    return !!p && (p.done || p.step >= 1);
+  };
+
+  const enterCrypt = () => {
+    if (!cryptOpen()) {
+      chat("err", g().quests.restless_crypt
+        ? "The crypt door is still sealed. Brother Cael will unseal it once he has blessed five bones."
+        : "The crypt door is sealed with an old iron lock. Brother Cael in the chapel might know more.");
+      sfx.error();
+      return;
+    }
+    teleport(CRYPT_ARRIVE);
+    chat("info", `${g().name} pushes open the crypt door and climbs down into the cold dark…`);
+    sfx.door();
+  };
+
+  const leaveCrypt = () => {
+    teleport(CRYPT_DOOR_OUT);
+    chat("info", `${g().name} climbs back up into Greyhallow Churchyard.`);
+    sfx.door();
+  };
 
   const pickUp = (id: number) => {
     const gg = g();
@@ -736,11 +899,11 @@ export function useGame() {
     gg.pendingTake = id;
   };
 
-  type FoeKind = "cow" | "chicken" | "goblin";
-  type Foe = { id: number; x: number; y: number; hp: number; maxHp: number; moo?: number; cluck?: number; grunt?: number };
+  type FoeKind = "cow" | "chicken" | "foe";
+  type Foe = { id: number; x: number; y: number; hp: number; maxHp: number; moo?: number; cluck?: number; grunt?: number; foe?: FoeEnt["foe"] };
 
-  const foeInfo = (kind: FoeKind, f: Foe) =>
-    FOES[kind === "goblin" && f.maxHp >= FOES.brigand.hp ? "brigand" : kind];
+  const foeId = (kind: FoeKind, f: Foe) => (kind === "foe" ? f.foe! : kind);
+  const foeInfo = (kind: FoeKind, f: Foe) => FOES[foeId(kind, f)];
 
   const attack = (kind: FoeKind, f: Foe) => {
     const gg = g();
@@ -759,11 +922,17 @@ export function useGame() {
       chat("info", `${gg.name} attacks the coop hen! "Cluck cluck!" 🐔`);
     } else {
       f.grunt = performance.now() + 1200;
-      sfx.grunt();
-      const taunts = [
-        `Goblin Warrior grunts fiercely! "Human dare challenge N.E. clan?!"`,
-        `Goblin Warrior raises spiked club! "You pay shiny gold for trespassing!"`,
-      ];
+      const id = foeId(kind, f);
+      const undead = id === "restless" || id === "warden";
+      if (undead) sfx.rattle(); else sfx.grunt();
+      const taunts: string[] = id === "warden"
+        ? [`The Hollow Warden lifts its blade. "None… shall… pass…"`, `The Hollow Warden's eyes kindle. "The watch… is not… over."`]
+        : id === "restless"
+        ? [`The Restless Dead rattles toward you, jaw clacking.`, `A cold moan rises from the Restless Dead.`]
+        : [
+          `${foeInfo(kind, f).name} grunts fiercely! "Human dare challenge gully clan?!"`,
+          `${foeInfo(kind, f).name} raises spiked club! "You pay shiny gold for trespassing!"`,
+        ];
       chat("npc", taunts[Math.floor(Math.random() * taunts.length)]);
       chat("info", `${gg.name} charges into combat against the ${foeInfo(kind, f).name}!`);
     }
@@ -830,13 +999,18 @@ export function useGame() {
   const STATION_ABOUT: Record<StationId, string> = {
     furnace: "A roaring furnace. Smelt ore into bars here.",
     anvil: "A heavy anvil. Hammer bars into weapons and armour.",
-    fire: "A crackling campfire. Cook raw food over it.",
+    fire: "A crackling fire. Cook raw food over it.",
   };
   const SCENERY: Record<string, [string, string]> = {
     H: ["Goblin tent", "A rustic hide goblin tent adorned with boar tusks and tribal pennants."],
     V: ["Goblin banner", "A tribal bone banner displaying the crest of the North-East Goblin Clan."],
     c: ["Hen house", "A wooden chicken hen house full of roosting feathers and straw."],
     h: ["Hay bale", "A golden hay bale stacked in the farm coop."],
+    n: ["Pew", "A worn oak pew, polished by a hundred years of Sunday sitting."],
+    j: ["Candle stand", "A tall iron stand of candles, burning low and steady."],
+    e: ["Shelves", "Shelves of odds and ends: rope, nails, jars, a lonely boot."],
+    y: ["Gravestone", "A weathered headstone. The name has worn away, but someone still leaves flowers."],
+    s: ["Sarcophagus", "A stone coffin, its lid carved with a sleeping knight. It's cold to the touch."],
   };
 
   /** Everything clickable on a tile, topmost first, each with its actions (default first). */
@@ -846,7 +1020,7 @@ export function useGame() {
     const inspect = (text: string): MenuOption => ({ label: "Inspect", run: () => chat("info", text) });
 
     // Foes come first, so left-click fights rather than grabbing loot underfoot
-    const foes: [FoeKind, Foe[]][] = [["cow", gg.cows], ["chicken", gg.chickens ?? []], ["goblin", gg.goblins ?? []]];
+    const foes: [FoeKind, Foe[]][] = [["cow", gg.cows], ["chicken", gg.chickens ?? []], ["foe", gg.foes ?? []]];
     for (const [kind, list] of foes) {
       for (const f of list) {
         if (f.hp <= 0 || Math.round(f.x) !== x || Math.round(f.y) !== y) continue;
@@ -888,7 +1062,7 @@ export function useGame() {
             label: "Talk to", target: "Roka",
             run: () => speakTo(x, y, () => talkRoka(x, y)),
           },
-          { ...inspect("Roka, the valley trader. Buys and sells tools, gear and goods."), target: "Roka" },
+          { ...inspect("Roka, the valley trader, in her new trading post. Buys and sells tools, gear and goods."), target: "Roka" },
         ],
         use: (slot) => {
           const s = gg.inv[slot];
@@ -910,17 +1084,54 @@ export function useGame() {
           },
           { ...inspect("Old Maro, the valley's guide, full of good advice."), target: "Old Maro" },
         ],
-        use: (slot) => {
-          const s = gg.inv[slot];
-          if (!s) return;
-          // Handing over what a quest asked for goes straight to that quest
-          const q = QUESTS.find((d) => {
-            const st = currentStep(d);
-            return d.giver === "maro" && st && st.kind !== "do" && st.item === s.item;
-          });
-          if (q) return speakTo(x, y, () => aboutQuest(q, x, y));
-          speakTo(x, y, () => chat("npc", `Old Maro: ${ITEMS[s.item].name}? Hold on to it, young one. You'll find a use for it.`));
-        },
+        use: (slot) => giveTo("maro", slot, x, y),
+      });
+    } else if (ch === "Q") {
+      out.push({
+        name: "Brother Cael",
+        actions: [
+          { label: "Talk to", target: "Brother Cael", run: () => speakTo(x, y, () => talkCael(x, y)) },
+          { ...inspect("Brother Cael, keeper of Greyhallow Chapel. He looks like he hasn't slept well in years."), target: "Brother Cael" },
+        ],
+        use: (slot) => giveTo("cael", slot, x, y),
+      });
+    } else if (ch === "K") {
+      out.push({
+        name: "Hesta",
+        actions: [
+          { label: "Bank", target: "Hesta", run: () => openAt("bank", x, y + 1) },
+          { label: "Talk to", target: "Hesta", run: () => speakTo(x, y, () => talkHesta(x, y)) },
+          { ...inspect("Hesta, teller of the Bank of ForgeBound. She never forgets a face, or a debt."), target: "Hesta" },
+        ],
+        use: () => speakTo(x, y, () => chat("npc", "Hesta: If you'd like that kept safe, use a booth or just ask me to open your account.")),
+      });
+    } else if (ch === "Z") {
+      const gate = GATES.find((q) => q.x === x && q.y === y)!;
+      out.push({
+        name: `Waygate (${gate.name})`,
+        actions: [
+          { label: "Travel", target: `Waygate (${gate.name})`, run: () => approach("use", x, y, 1, () => openGate(gate.id)) },
+          { ...inspect("A ring of standing stones humming with old light. Attune to waygates by passing close, then travel between any of them."), target: "Waygate" },
+        ],
+        use: nothing,
+      });
+    } else if (ch === "D") {
+      out.push({
+        name: "Crypt door",
+        actions: [
+          { label: "Enter", target: "Crypt door", run: () => approach("use", x, y, 1, enterCrypt) },
+          { ...inspect("Iron-bound doors set into a low stone vault, steps leading down into the dark."), target: "Crypt door" },
+        ],
+        use: nothing,
+      });
+    } else if (ch === "U") {
+      out.push({
+        name: "Stairs",
+        actions: [
+          { label: "Climb", target: "Stairs", run: () => approach("use", x, y, 1, leaveCrypt) },
+          { ...inspect("Worn stone steps, climbing back up to the churchyard and the daylight."), target: "Stairs" },
+        ],
+        use: nothing,
       });
     } else if (ch === "B") {
       out.push({
@@ -960,7 +1171,7 @@ export function useGame() {
         name: "Altar",
         actions: [
           { label: "Pray at", target: "Altar", run: () => prayAt(x, y) },
-          { ...inspect(`Altar: A quiet stone altar. Pray here to restore your prayer points (${Math.floor(gg.prayer)}/${max}).`), target: "Altar" },
+          { ...inspect(`Altar: ${isUnderground(x, y) ? "An old warden's altar, its stone still warm with prayer." : "Greyhallow's altar, under a white cloth."} Pray here to restore your prayer points (${Math.floor(gg.prayer)}/${max}).`), target: "Altar" },
         ],
         use: nothing,
       });
@@ -1162,6 +1373,10 @@ export function useGame() {
     }
   };
 
+  /** Which foe a combat action is against. */
+  const kind0 = (a: Extract<Action, { kind: "combat" }>, target: Foe) =>
+    a.targetKind === "foe" ? (target as FoeEnt).foe : a.targetKind;
+
   // --- RS3 Combat Round Processing ---
   const completeCombatRound = (a: Extract<Action, { kind: "combat" }>, now: number) => {
     const gg = g();
@@ -1173,9 +1388,9 @@ export function useGame() {
     } else if (a.targetKind === "chicken") {
       target = (gg.chickens || []).find((c) => c.id === a.targetId);
       name = "Coop Hen";
-    } else if (a.targetKind === "goblin") {
-      target = (gg.goblins || []).find((gb) => gb.id === a.targetId);
-      name = "Goblin Warrior";
+    } else {
+      target = (gg.foes || []).find((f) => f.id === a.targetId);
+      name = target ? FOES[(target as FoeEnt).foe].name : "";
     }
 
     if (!target || target.hp <= 0) {
@@ -1222,11 +1437,12 @@ export function useGame() {
 
     // 2. Check if Monster is Defeated!
     if (target.hp <= 0) {
-      target.respawn = now + (a.targetKind === "goblin" ? 18000 : 12000);
+      const kind = kind0(a, target);
+      target.respawn = now + FOES[kind].respawn;
       target.diedAt = now; // drives the death-fade in the renderer
       gg.counters.kills = (gg.counters.kills || 0) + 1;
       sfx.kill();
-      questEvent({ kind: "kill", foe: a.targetKind === "goblin" && target.maxHp >= FOES.brigand.hp ? "brigand" : a.targetKind });
+      questEvent({ kind: "kill", foe: kind });
 
       // Table-driven drop, reported as one combined line.
       if (!gg.groundItems) gg.groundItems = [];
@@ -1245,7 +1461,12 @@ export function useGame() {
         gg.groundItems.push({ id: nextId(), item: "raw_chicken", n: 1, x: gx, y: gy, t: now });
         gg.groundItems.push({ id: nextId(), item: "feathers", n: feathers, x: gx, y: gy, t: now });
         parts.push("raw chicken", `${feathers} feather${feathers > 1 ? "s" : ""}`);
-      } else if (a.targetKind === "goblin") {
+      } else if (kind === "restless" || kind === "warden") {
+        const coins = kind === "warden" ? 25 + Math.floor(Math.random() * 16) : 2 + Math.floor(Math.random() * 5);
+        gg.groundItems.push({ id: nextId(), item: "coins", n: coins, x: gx, y: gy, t: now });
+        parts.push(`${coins} coins`);
+        if (kind === "warden") chat("sys", "The Hollow Warden crumbles to dust. Through the stone, the crypt seems to breathe out.");
+      } else {
         const coins = Math.floor(Math.random() * 3) + 1;
         gg.groundItems.push({ id: nextId(), item: "coins", n: coins, x: gx, y: gy, t: now });
         parts.push(`${coins} coin${coins > 1 ? "s" : ""}`);
@@ -1265,9 +1486,8 @@ export function useGame() {
     }
 
     // 3. Surviving Monster Counter-Attacks Hero!
-    let enemyMax = 0;
-    if (a.targetKind === "cow") enemyMax = 1;
-    else if (a.targetKind === "goblin") enemyMax = 3;
+    // Spirit Ward takes the edge off every blow
+    const enemyMax = Math.max(0, FOES[kind0(a, target)].maxHit - (blessed("spirit_ward") ? 1 : 0));
 
     if (enemyMax > 0) {
       const armorBonus = toolTier("armor") * 1;
@@ -1288,6 +1508,7 @@ export function useGame() {
           gg.y = SPAWN.y;
           gg.action = null;
           gg.path = [];
+          closeWindows();
         }
       } else {
         sfx.miss();
@@ -1313,6 +1534,19 @@ export function useGame() {
     // Whatever is left lying around (drops, loot, eggs) despawns after two minutes
     gg.groundItems = gg.groundItems.filter((gi) => now - gi.t < GROUND_ITEM_MS);
 
+    // A waygate jump holds the hero still while they fade out, then lands them
+    if (gg.warp) {
+      gg.path = [];
+      gg.action = null;
+      if (now >= gg.warp.at) {
+        gg.x = gg.warp.x;
+        gg.y = gg.warp.y;
+        gg.warp = null;
+        emote.warpInAt = now;
+        sfx.attune();
+      }
+    }
+
     // movement
     if (gg.path.length) {
       moveAcc.current += dt;
@@ -1330,7 +1564,7 @@ export function useGame() {
         if (p.kind === "bank") gg.bankOpen = true;
         else if (p.kind === "shop") gg.shopOpen = true;
         else if (p.kind === "craft" && p.station) gg.stationUI = { station: p.station, x: p.x, y: p.y };
-        if (p.kind === "talk" || p.kind === "pray") {
+        if (p.kind === "talk" || p.kind === "pray" || p.kind === "use") {
           pendingDo.current?.();
           pendingDo.current = null;
         } else sfx.open(p.kind === "craft" ? "station" : p.kind);
@@ -1373,7 +1607,7 @@ export function useGame() {
       }
     }
 
-    const inFight = (kind: "cow" | "chicken" | "goblin", id: number) =>
+    const inFight = (kind: "cow" | "chicken" | "foe", id: number) =>
       gg.action?.kind === "combat" && gg.action.targetKind === kind && gg.action.targetId === id;
 
     // Cows wander & respawn
@@ -1392,7 +1626,7 @@ export function useGame() {
           const dirs = [{ x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }];
           const d = dirs[Math.floor(Math.random() * dirs.length)];
           const nx = c.x + d.x, ny = c.y + d.y;
-          if (nx >= 26 && nx <= 36 && ny >= 12 && ny <= 17 && walkable(nx, ny) && !(nx === gg.x && ny === gg.y)) {
+          if (inPen(COW_PEN, nx, ny) && walkable(nx, ny) && !(nx === gg.x && ny === gg.y)) {
             c.dx = nx; c.dy = ny; c.nextMove = now + 4000 + Math.random() * 6000;
           }
         }
@@ -1428,7 +1662,7 @@ export function useGame() {
             const dirs = [{ x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }];
             const d = dirs[Math.floor(Math.random() * dirs.length)];
             const nx = ch.x + d.x, ny = ch.y + d.y;
-            if (nx >= 41 && nx <= 45 && ny >= 26 && ny <= 29 && walkable(nx, ny) && !(nx === gg.x && ny === gg.y)) {
+            if (inPen(COOP_PEN, nx, ny) && walkable(nx, ny) && !(nx === gg.x && ny === gg.y)) {
               ch.dx = nx; ch.dy = ny; ch.nextMove = now + 2500 + Math.random() * 4000;
             }
           }
@@ -1442,22 +1676,22 @@ export function useGame() {
       }
     }
 
-    // Goblins patrol & respawn (N.E. Village)
-    if (gg.goblins) {
-      for (const gb of gg.goblins) {
+    // Goblins and the restless dead patrol their homes & respawn
+    if (gg.foes) {
+      for (const gb of gg.foes) {
         if (gb.hp <= 0) {
           if (now > gb.respawn) { gb.hp = gb.maxHp; gb.diedAt = 0; }
           continue;
         }
-        if (gb.hp < gb.maxHp && !(gg.action?.kind === "combat" && gg.action.targetKind === "goblin" && gg.action.targetId === gb.id)) {
+        if (gb.hp < gb.maxHp && !inFight("foe", gb.id)) {
           gb.hp = Math.min(gb.maxHp, gb.hp + dt / 1800);
         }
-        if (gb.x === gb.dx && gb.y === gb.dy && now > gb.nextMove && !inFight("goblin", gb.id)) {
+        if (gb.x === gb.dx && gb.y === gb.dy && now > gb.nextMove && !inFight("foe", gb.id)) {
           if (Math.random() < 0.06) {
             const dirs = [{ x: 0, y: -1 }, { x: 1, y: 0 }, { x: 0, y: 1 }, { x: -1, y: 0 }];
             const d = dirs[Math.floor(Math.random() * dirs.length)];
             const nx = gb.x + d.x, ny = gb.y + d.y;
-            if (nx >= 44 && nx <= 59 && ny >= 11 && ny <= 17 && walkable(nx, ny) && !(nx === gg.x && ny === gg.y)) {
+            if (inPen(gb.home, nx, ny) && walkable(nx, ny) && !(nx === gg.x && ny === gg.y)) {
               gb.dx = nx; gb.dy = ny; gb.nextMove = now + 3500 + Math.random() * 5000;
             }
           }
@@ -1477,7 +1711,7 @@ export function useGame() {
       if (gg.prayer <= 0) {
         gg.prayer = 0;
         gg.blessings = [];
-        chat("err", "You have run out of prayer points. Your blessings fade. Recharge at the altar in Vale Square.");
+        chat("err", "You have run out of prayer points. Your blessings fade. Recharge at the altar in Greyhallow Chapel.");
         sfx.unbless();
       }
     }
@@ -1489,6 +1723,11 @@ export function useGame() {
         addFloat("+1", "rgb(120,230,140)");
       }
     } else mendAcc.current = 0;
+
+    // Passing close by a waygate attunes to it
+    for (const gt of GATES) {
+      if (!gg.gates.includes(gt.id) && Math.max(Math.abs(gg.x - gt.x), Math.abs(gg.y - gt.y)) <= ATTUNE_RANGE) attune(gt.id);
+    }
 
     // Walking away ends a conversation
     if (gg.dialogue && Math.max(Math.abs(gg.x - gg.dialogue.x), Math.abs(gg.y - gg.dialogue.y)) > TALK_RANGE + 1) gg.dialogue = null;
@@ -1834,10 +2073,16 @@ export function useGame() {
   /** Escape / ✕: close every window and put down a held item. */
   const closeOverlays = () => {
     const gg = g();
-    if (gg.bankOpen || gg.shopOpen || gg.stationUI || gg.guide || gg.settingsOpen) sfx.close();
+    if (gg.bankOpen || gg.shopOpen || gg.stationUI || gg.guide || gg.settingsOpen || gg.gateOpen) sfx.close();
     closeWindows();
     gg.settingsOpen = false;
     gg.selected = null;
+    bump();
+  };
+
+  const closeGate = () => {
+    g().gateOpen = null;
+    sfx.close();
     bump();
   };
 
@@ -1903,16 +2148,15 @@ export function useGame() {
     if (!gg.zoom) gg.zoom = 2.2;
     if (!gg.graphicsMode) gg.graphicsMode = "64bit";
     if (!gg.chickens) gg.chickens = CHICKEN_SPAWNS.map((c, idx) => ({ id: idx + 20, x: c.x, y: c.y, dx: c.x, dy: c.y, hp: 3, maxHp: 3, respawn: 0, nextMove: 0, cluck: 0, nextEgg: performance.now() + 15000 }));
-    if (!gg.goblins) gg.goblins = GOBLIN_SPAWNS.map((gb, idx) => {
-      const brigand = idx >= 5;
-      return { id: idx + 50, x: gb.x, y: gb.y, dx: gb.x, dy: gb.y, hp: brigand ? 22 : 12, maxHp: brigand ? 22 : 12, respawn: 0, nextMove: 0, grunt: 0 };
-    });
-    if (!gg.groundItems) gg.groundItems = [{ id: nextId(), item: "egg", n: 1, x: 43, y: 27, t: performance.now() }];
+    if (!gg.foes) gg.foes = spawnFoes();
+    if (!gg.gates) gg.gates = ["vale"];
+    gg.warp = null;
+    if (!gg.groundItems) gg.groundItems = [{ id: nextId(), item: "egg", n: 1, ...STARTER_EGG, t: performance.now() }];
     if (!gg.equipped.weapon) gg.equipped.weapon = "bronze_sword";
 
     if (loaded) {
-      chat("sys", `Welcome back to ForgeBound, ${gg.name}! Combat engine restored in Gamma v${VERSION}.`);
-      chat("sys", "Monsters now fight back, lay eggs, and drop loot onto the valley terrain!");
+      chat("sys", `Welcome back to ForgeBound, ${gg.name}! Gamma v${VERSION}: The Wider Realm.`);
+      chat("sys", "The Vale has grown, and its square is a village now: the smithy, the bank, Roka's trading post and Old Maro's hut. West past the Westwood lies Greyhallow Chapel.");
     } else {
       chat("sys", `Welcome to ForgeBound — Gamma (v${VERSION}) with the immersive layout & combat.`);
       chat("info", "Starter kit: bronze sword, axe & pick in pack. Engage in combat with goblins, cows & chickens!");
@@ -1948,6 +2192,8 @@ export function useGame() {
       openSettings,
       openGuide,
       toggleBlessing,
+      travel,
+      closeGate,
       dialogueNext,
       dialogueChoose,
       endTalk,

@@ -1,17 +1,19 @@
 import { useEffect, useRef, useState } from "react";
 import type { GameApi } from "../game/useGame";
-import { MAP_H, MAP_W, groundAt, objAt } from "../game/map";
+import { BUILDINGS, MAP_H, MAP_W, UNDER_Y, groundAt, isUnderground, objAt } from "../game/map";
 import { ORE_COLORS } from "../game/render";
+import { roofColor } from "../game/village";
 
-/** On-screen size of one tile at 1× zoom (CSS px); the frame is the whole realm at 1×. */
+/** On-screen size of one tile at 1× zoom (CSS px). */
 const SCALE = 3;
-const MW = MAP_W * SCALE;
-const MH = MAP_H * SCALE;
+/** The radar's frame (CSS px): it always follows the hero, whatever the realm's size. */
+const MW = 216;
+const MH = 156;
 /** Terrain is painted once at this many px per tile, so zooming in stays crisp. */
 const BP = 16;
 
-/** Minimap zoom steps; 1 shows the whole realm, higher follows the hero up close. */
-const ZOOMS = [1, 1.5, 2, 3, 4];
+/** Radar zoom steps; ½ takes in most of the realm, 4 is up close. */
+const ZOOMS = [0.5, 1, 1.5, 2, 3, 4];
 const ZOOM_KEY = "forgebound-minimap-zoom";
 const DEFAULT_ZOOM = 2;
 
@@ -49,6 +51,12 @@ function paintTerrain(): HTMLCanvasElement {
             else if (g === "_") b.fillStyle = `hsl(42, 58%, ${60 + h * 6}%)`;
             else if (g === "b") b.fillStyle = `hsl(25, 48%, ${34 + h * 4}%)`;
             else if (g === "m") b.fillStyle = `hsl(212, 10%, ${22 + h * 5}%)`;
+            else if (g === "p") b.fillStyle = `hsl(28, 38%, ${32 + h * 4}%)`;
+            else if (g === "q" || g === "d") b.fillStyle = `hsl(35, 6%, ${46 + h * 6}%)`;
+            else if (g === "W") b.fillStyle = "#3a332c";
+            else if (g === "k") b.fillStyle = `hsl(220, 8%, ${22 + h * 5}%)`;
+            else if (g === "w") b.fillStyle = "#2a2c34";
+            else if (g === " ") b.fillStyle = "#060608";
             else b.fillStyle = `hsl(${105 + h * 16}, ${38 + h * 10}%, ${27 + h * 5}%)`;
             b.fillRect(px, py, BP, BP);
 
@@ -152,13 +160,35 @@ function paintTerrain(): HTMLCanvasElement {
             } else if (o === "^") {
                 b.fillStyle = "rgba(30,70,20,0.45)";
                 b.beginPath(); b.arc(cx, cy, BP * 0.35, 0, Math.PI * 2); b.fill();
+            } else if (o === "y") {
+                b.fillStyle = "#9a988f";
+                b.fillRect(cx - 2.5, cy - 4, 5, 7);
+            } else if (o === "s" || o === "n" || o === "e") {
+                b.fillStyle = o === "s" ? "#5a5a62" : "#6a4420";
+                b.fillRect(cx - 6, cy - 3, 12, 6);
+            } else if (o === "D") {
+                b.fillStyle = "#6c6a64"; b.fillRect(cx - 8, cy - 6, 16, 12);
+                b.fillStyle = "#0c0a08"; b.fillRect(cx - 3, cy - 2, 6, 8);
             }
         }
+    }
+
+    // Roofs, as the radar sees them from above; a soft ridge line along each
+    for (const bd of BUILDINGS) {
+        const x = bd.x0 * BP, y = bd.y0 * BP, w = (bd.x1 - bd.x0 + 1) * BP, h = (bd.y1 - bd.y0 + 1) * BP;
+        b.fillStyle = "rgba(0,0,0,0.35)";
+        b.fillRect(x + 3, y + 4, w, h);
+        b.fillStyle = roofColor(bd);
+        b.fillRect(x, y, w, h);
+        b.fillStyle = "rgba(255,255,255,0.12)";
+        b.fillRect(x, y, w, h * 0.45);
+        b.fillStyle = "rgba(0,0,0,0.3)";
+        b.fillRect(x, y + h * 0.45, w, 2);
     }
     return base;
 }
 
-type Glyph = "coin" | "bag" | "flame" | "anvil" | "star" | "fish" | "guide";
+type Glyph = "coin" | "bag" | "flame" | "anvil" | "star" | "fish" | "guide" | "gate";
 interface MapIcon { x: number; y: number; glyph: Glyph; ring: string; fill: string }
 
 /** Map icons for the places worth finding; fishing spots get one icon per stretch of water. */
@@ -168,10 +198,13 @@ function findIcons(): MapIcon[] {
     for (let y = 0; y < MAP_H; y++) {
         for (let x = 0; x < MAP_W; x++) {
             const o = objAt(x, y);
-            if (o === "B") add(x, y, "coin", "#e8c040");
+            const near = (gl: Glyph, d: number) => icons.some((i) => i.glyph === gl && Math.abs(i.x - x) + Math.abs(i.y - y) < d);
+            if (o === "B") { if (!near("coin", 8)) add(x + 3, y, "coin", "#e8c040"); }
+            else if (o === "Z") add(x, y, "gate", "#7ad8ff", "#1a3a5a");
+            else if (o === "Q") add(x, y, "guide", "#c8b080");
             else if (o === "M") add(x, y, "bag", "#b060c0");
             else if (o === "F") add(x, y, "flame", "#e07020");
-            else if (o === "*") add(x, y, "flame", "#d84a28");
+            else if (o === "*") { if (!near("flame", 3)) add(x + 0.5, y + 0.5, "flame", "#d84a28"); }
             else if (o === "A") add(x, y, "anvil", "#8a929c");
             else if (o === "L") add(x, y, "star", "#e8e4f8", "#4a4670");
             else if (o === "P") add(x, y, "guide", "#5a88e0");
@@ -240,6 +273,13 @@ function drawIcon(ctx: CanvasRenderingContext2D, ic: MapIcon, cx: number, cy: nu
             ctx.fillStyle = "#e8f6ff";
             ctx.beginPath(); ctx.ellipse(cx - 0.6, cy, 2.6, 1.6, 0, 0, Math.PI * 2); ctx.fill();
             ctx.beginPath(); ctx.moveTo(cx + 1.6, cy); ctx.lineTo(cx + 3.4, cy - 1.8); ctx.lineTo(cx + 3.4, cy + 1.8); ctx.fill();
+            break;
+        case "gate":
+            ctx.strokeStyle = "#e8f8ff";
+            ctx.lineWidth = 1.2;
+            ctx.beginPath(); ctx.ellipse(cx, cy + 0.5, 3, 2, 0, 0, Math.PI * 2); ctx.stroke();
+            ctx.fillStyle = "#e8f8ff";
+            for (const dx of [-2.6, 0, 2.6]) ctx.fillRect(cx + dx - 0.6, cy - 3 + (dx === 0 ? -0.6 : 0.6), 1.2, 3);
             break;
         case "guide":
             ctx.fillStyle = "#f4eee0";
@@ -335,19 +375,28 @@ export function Minimap({ api }: { api: GameApi }) {
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             ctx.clearRect(0, 0, MW, MH);
 
-            // View window in tiles, centred on the hero and kept inside the map
+            // View window in tiles, centred on the hero and kept inside the
+            // hero's own layer: the surface, or the crypt below it
             const z = zoomRef.current;
-            const vw = MAP_W / z, vh = MAP_H / z;
-            const ox = Math.max(0, Math.min(MAP_W - vw, g.x + 0.5 - vw / 2));
-            const oy = Math.max(0, Math.min(MAP_H - vh, g.y + 0.5 - vh / 2));
-            viewRef.current = { ox, oy };
             const tp = SCALE * z; // CSS px per tile
+            const vw = MW / tp, vh = MH / tp;
+            const under = isUnderground(g.x, g.y);
+            const top = under ? UNDER_Y : 0, bottom = under ? MAP_H : UNDER_Y;
+            const ox = vw >= MAP_W ? (MAP_W - vw) / 2 : Math.max(0, Math.min(MAP_W - vw, g.x + 0.5 - vw / 2));
+            const oy = vh >= bottom - top ? top + (bottom - top - vh) / 2 : Math.max(top, Math.min(bottom - vh, g.y + 0.5 - vh / 2));
+            viewRef.current = { ox, oy };
+            ctx.fillStyle = "#060608";
+            ctx.fillRect(0, 0, MW, MH);
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = "high";
-            ctx.drawImage(base, ox * BP, oy * BP, vw * BP, vh * BP, 0, 0, MW, MH);
+            // Only the hero's layer shows; the band beyond it stays dark
+            const sy0 = Math.max(oy, top), sy1 = Math.min(oy + vh, bottom);
+            const sx0 = Math.max(0, ox), sx1 = Math.min(MAP_W, ox + vw);
+            ctx.drawImage(base, sx0 * BP, sy0 * BP, (sx1 - sx0) * BP, (sy1 - sy0) * BP,
+                (sx0 - ox) * tp, (sy0 - oy) * tp, (sx1 - sx0) * tp, (sy1 - sy0) * tp);
             const sx = (x: number) => (x - ox + 0.5) * tp;
             const sy = (y: number) => (y - oy + 0.5) * tp;
-            const inView = (x: number, y: number) => x >= ox - 1 && x <= ox + vw && y >= oy - 1 && y <= oy + vh;
+            const inView = (x: number, y: number) => x >= ox - 1 && x <= ox + vw && y >= oy - 1 && y <= oy + vh && isUnderground(x, y) === under;
 
             // creatures: small outlined dots
             const dot = (x: number, y: number, color: string) => {
@@ -360,7 +409,7 @@ export function Minimap({ api }: { api: GameApi }) {
             };
             for (const c of g.cows) if (c.hp > 0) dot(c.x, c.y, "#f4f0e8");
             for (const ch of g.chickens ?? []) if (ch.hp > 0) dot(ch.x, ch.y, "#ffe14a");
-            for (const gb of g.goblins ?? []) if (gb.hp > 0) dot(gb.x, gb.y, "#e05252");
+            for (const f of g.foes ?? []) if (f.hp > 0) dot(f.x, f.y, f.foe === "restless" || f.foe === "warden" ? "#9fe8ff" : "#e05252");
 
             // Icons shrink when zoomed out so the square's cluster doesn't pile up
             const iconScale = Math.min(1, 0.5 + z * 0.22);
@@ -386,8 +435,9 @@ export function Minimap({ api }: { api: GameApi }) {
         const rect = canvas.getBoundingClientRect();
         const { ox, oy } = viewRef.current;
         const z = zoomRef.current;
-        const tx = Math.floor(ox + ((e.clientX - rect.left) / rect.width) * (MAP_W / z));
-        const ty = Math.floor(oy + ((e.clientY - rect.top) / rect.height) * (MAP_H / z));
+        const tp = SCALE * z;
+        const tx = Math.floor(ox + ((e.clientX - rect.left) / rect.width) * (MW / tp));
+        const ty = Math.floor(oy + ((e.clientY - rect.top) / rect.height) * (MH / tp));
         api.handleWorldClick(tx, ty);
         api.bump();
     };

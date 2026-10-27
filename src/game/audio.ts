@@ -6,6 +6,7 @@
  * A shared synthetic reverb (a generated impulse, no samples) takes a send
  * from the music and effects buses, so everything sits in the same space.
  */
+import type { NpcId } from "./types";
 let ctx: AudioContext | null = null;
 
 export interface AudioSettings {
@@ -271,9 +272,11 @@ function footstep(ground: Ground) {
 
 // Vowel formants (Hz) for the NPCs' babble: a, e, o, u
 const VOWELS: [number, number][] = [[800, 1200], [450, 1900], [480, 820], [350, 700]];
-const VOICE: Record<"maro" | "roka", { pitch: number; rate: number }> = {
+const VOICE: Record<NpcId, { pitch: number; rate: number }> = {
   maro: { pitch: 118, rate: 0.13 }, // low, warm and unhurried
   roka: { pitch: 205, rate: 0.1 }, // brighter and quicker
+  hesta: { pitch: 228, rate: 0.085 }, // crisp and businesslike
+  cael: { pitch: 132, rate: 0.15 }, // soft, slow and careful
 };
 
 /**
@@ -281,7 +284,7 @@ const VOICE: Record<"maro" | "roka", { pitch: number; rate: number }> = {
  * formants, with a little pitch contour and a breathy consonant at the start
  * of each syllable. Not words, just the sound of someone talking.
  */
-function voice(who: "maro" | "roka", syllables: number) {
+function voice(who: NpcId, syllables: number) {
   const b = audio();
   if (!b) return;
   const { c } = b;
@@ -335,7 +338,7 @@ export const sfx = {
   /** Dialogue: a soft page-turn as a conversation opens or moves on. */
   page() { noise(0.1, { vol: 0.03, freq: 2400, sweep: 900, q: 0.8, attack: 0.02 }); },
   /** An NPC speaking a line: a few syllables of their voice. */
-  voice(who: "maro" | "roka", syllables = 4) { voice(who, syllables); },
+  voice(who: NpcId, syllables = 4) { voice(who, syllables); },
   open(what: "bank" | "shop" | "station") {
     if (what === "bank") {
       // a heavy chest lid creaks open, then coins settle
@@ -403,6 +406,11 @@ export const sfx = {
   cluck() {
     for (let i = 0; i < 3; i++) tone(720 + i * 60, 0.06, { type: "square", vol: 0.025, glide: 520, delay: i * 0.09, wet: 0.1 });
   },
+  /** The restless dead: a dry clatter of bones and a hollow moan. */
+  rattle() {
+    for (let i = 0; i < 5; i++) noise(0.03, { vol: 0.04, freq: 1800 + i * 300, q: 4, delay: i * 0.05 });
+    tone(150, 0.7, { type: "triangle", vol: 0.035, glide: 110, attack: 0.15, delay: 0.1, wet: 0.6 });
+  },
   grunt() {
     tone(95, 0.3, { type: "sawtooth", vol: 0.05, glide: 70, attack: 0.03, wet: 0.15 });
     noise(0.25, { vol: 0.03, freq: 350, q: 2.5, attack: 0.03 });
@@ -433,6 +441,24 @@ export const sfx = {
   },
 
   // Moments: these are fuller stingers now (see music.ts), kept here for callers
+  // Waygates & the crypt
+  /** Stepping up to a waygate: a low hum and a shimmer. */
+  gate() {
+    tone(110, 0.9, { type: "sine", vol: 0.05, attack: 0.2, wet: 0.5 });
+    [660, 990, 1320].forEach((f, i) => tone(f, 0.5, { type: "sine", vol: 0.02, delay: 0.1 + i * 0.07, wet: 0.7 }));
+  },
+  attune() {
+    [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => tone(f, 0.6, { type: "sine", vol: 0.035, delay: i * 0.09, wet: 0.7 }));
+  },
+  teleport() {
+    tone(220, 0.8, { type: "sine", vol: 0.06, glide: 880, attack: 0.05, wet: 0.6 });
+    noise(0.7, { vol: 0.04, freq: 800, sweep: 5000, q: 1, attack: 0.1, wet: 0.5 });
+  },
+  door() {
+    tone(90, 0.5, { type: "sawtooth", vol: 0.03, glide: 70, attack: 0.05, wet: 0.4 });
+    noise(0.45, { vol: 0.04, freq: 400, q: 2, attack: 0.08, wet: 0.4 });
+  },
+
   levelUp() { stinger("level"); },
   death() { stinger("death"); },
   quest() { stinger("quest"); },

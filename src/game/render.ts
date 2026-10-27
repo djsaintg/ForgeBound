@@ -1,10 +1,11 @@
-import { MAP_W, MAP_H, TILE, groundAt, objAt } from "./map";
-import type { ChickenEnt, CowEnt, GameState, GoblinEnt, ItemId } from "./types";
+import { MAP_W, MAP_H, TILE, bonfireTile, groundAt, isUnderground, objAt } from "./map";
+import type { ChickenEnt, CowEnt, FoeEnt, GameState, ItemId, NpcId } from "./types";
+import { drawRoofs, drawVillageGround, drawVillageObject, isCandleLight } from "./village";
 import { drawFigure, dirFrom, type Dir, type Look } from "./figure";
 import { drawChicken, drawCow } from "./creatures";
-import { BURY_MS, STRIKES, dayCycle, emote, jobOf, strikesDone, toolFor, type Job } from "./anim";
+import { BURY_MS, STRIKES, WARP_MS, dayCycle, emote, jobOf, strikesDone, toolFor, type Job } from "./anim";
 import { METALS, type GearShape } from "./gear";
-import { GROUND_ITEM_MS, GROUND_ITEM_WARN_MS } from "./data";
+import { FOES, GROUND_ITEM_MS, GROUND_ITEM_WARN_MS } from "./data";
 import { npcMarker, type NpcMarker } from "./quests";
 
 export interface Cam {
@@ -940,8 +941,8 @@ function drawObject64(ctx: CanvasRenderingContext2D, ch: string, x: number, y: n
     }
   } else if (ch === "f" || ch === "t") {
     drawFishingSpot(ctx, ch === "t", x, y, cx, cy, s, time);
-  } else if (ch === "M" || ch === "P") {
-    drawTownsfolk(ctx, ch === "P", cx, py, s, time);
+  } else if (NPC_AT[ch]) {
+    drawTownsfolk(ctx, NPC_AT[ch], cx, py, s, time);
   } else if (ch === "%" || ch === "^") {
     if (ch === "%") {
       const fColors = ["#e85a70", "#9b5ae8", "#5ae8dc", "#f4d03f"];
@@ -1351,7 +1352,7 @@ function npcRig(
   key: string,
   e: { id: number; x: number; y: number; dx: number; dy: number },
   g: GameState,
-  kind: "cow" | "chicken" | "goblin",
+  kind: "cow" | "chicken" | "foe",
   fallback: Dir,
   time: number,
   gaitMs: number,
@@ -1419,30 +1420,57 @@ const BRIGAND: Look = {
   tunic: ["#24180c", "#3a2412", "#5c3a14"], sleeve: "#33511f", sleeveDark: "#24361a",
   height: 1, bulk: 1.15,
 };
+// The crypt's dead: bare bone in rotted grave-cloth, eyes lit cold blue
+const RESTLESS: Look = {
+  skin: "#ddd5bc", skinDark: "#a89e84", eyes: "#7fe8ff",
+  tunic: ["#3a3a34", "#55554c", "#6a6a60"], sleeve: "#ddd5bc", sleeveDark: "#a89e84",
+  trousers: "#ddd5bc", trousersDark: "#a89e84", boots: "#c8bfa4", height: 0.96, bulk: 0.85,
+};
+// The Hollow Warden: an old knight in black iron, still on watch
+const WARDEN: Look = {
+  skin: "#c8c0a8", skinDark: "#948a72", eyes: "#9ffcff",
+  tunic: ["#1c1e24", "#30343e", "#464c58"], sleeve: "#30343e", sleeveDark: "#1c1e24",
+  trousers: "#2a2c34", trousersDark: "#1c1e24", boots: "#14161a", belt: "#5a4a2a", buckle: "#b0a070",
+  plate: true, height: 1.12, bulk: 1.2,
+};
+const FOE_LOOK: Record<FoeEnt["foe"], { look: Look; weapon: "club" | "sword"; metal: "iron" | "bronze" | "steel"; len: number; shield: string | null; label: number }> = {
+  goblin: { look: GOBLIN, weapon: "club", metal: "iron", len: 0.44, shield: "#713f12", label: 0.33 },
+  brigand: { look: BRIGAND, weapon: "club", metal: "iron", len: 0.5, shield: "#713f12", label: 0.47 },
+  restless: { look: RESTLESS, weapon: "sword", metal: "bronze", len: 0.42, shield: null, label: 0.42 },
+  warden: { look: WARDEN, weapon: "sword", metal: "steel", len: 0.56, shield: "#2a2e38", label: 0.58 },
+};
 
-function drawGoblin64(ctx: CanvasRenderingContext2D, gb: GoblinEnt, cx: number, cy: number, s: number, time: number, g: GameState) {
-  const alpha = fadeOut(gb, time);
+function drawFoe64(ctx: CanvasRenderingContext2D, f: FoeEnt, cx: number, cy: number, s: number, time: number, g: GameState) {
+  const alpha = fadeOut(f, time);
   if (alpha === null) return;
-  const brigand = (gb.maxHp ?? 12) >= 20;
-  const look = brigand ? BRIGAND : GOBLIN;
-  const r = npcRig(`g${gb.id}`, gb, g, "goblin", "down", time, 480);
+  const st = FOE_LOOK[f.foe];
+  const undead = f.foe === "restless" || f.foe === "warden";
+  const r = npcRig(`g${f.id}`, f, g, "foe", "down", time, undead ? 620 : 480);
   const b = r.swing;
   ctx.save();
   ctx.globalAlpha = alpha;
-  drawFigure(ctx, look, {
-    dir: r.dir, walk: r.walk, time: time + gb.id * 300, stance: b !== null,
-    // A club slash, same arc as the hero's sword
+  if (undead) {
+    // a cold glow clinging to the bones
+    const aura = ctx.createRadialGradient(cx, cy - s * 0.1, 1, cx, cy - s * 0.1, s * 0.6);
+    aura.addColorStop(0, `rgba(120,230,255,${0.12 + 0.06 * Math.sin(time / 300 + f.id)})`);
+    aura.addColorStop(1, "rgba(120,230,255,0)");
+    ctx.fillStyle = aura;
+    ctx.fillRect(cx - s * 0.6, cy - s * 0.7, s * 1.2, s * 1.2);
+  }
+  drawFigure(ctx, st.look, {
+    dir: r.dir, walk: r.walk, time: time + f.id * 300, stance: b !== null,
+    // A slash, same arc as the hero's sword
     hand: b === null ? null : [mix(0.42, 0.08, b) - 0.14, mix(0.56, 0.24, b)],
-    tool: { shape: "club", metal: "iron", len: brigand ? 0.5 : 0.44, ang: b === null ? undefined : mix(2.1, -1.1, b) },
-    shield: "#713f12",
+    tool: { shape: st.weapon, metal: st.metal, len: st.len, ang: b === null ? undefined : mix(2.1, -1.1, b) },
+    shield: st.shield,
   }, cx, cy - s / 2, s);
   ctx.font = `bold ${Math.max(9, Math.floor(s * 0.18))}px sans-serif`;
   ctx.textAlign = "center";
-  ctx.fillStyle = "#ef4444";
-  ctx.fillText(brigand ? "Bramble Brigand Lvl 9" : "Goblin Lvl 5", cx, cy - s * (brigand ? 0.47 : 0.33));
-  hitFlash(ctx, gb, time, cx, cy, s * 0.26, s * 0.3);
+  ctx.fillStyle = undead ? "#9fe8ff" : "#ef4444";
+  ctx.fillText(`${FOES[f.foe].name} Lvl ${FOES[f.foe].level}`, cx, cy - s * st.label);
+  hitFlash(ctx, f, time, cx, cy, s * 0.26, s * 0.3);
   ctx.restore();
-  if (alpha === 1) drawHPBar(ctx, cx, cy - s * 0.15, gb.hp, gb.maxHp, s);
+  if (alpha === 1) drawHPBar(ctx, cx, cy - s * 0.15, f.hp, f.maxHp, s);
 }
 
 const ROKA: Look = {
@@ -1457,10 +1485,39 @@ const MARO: Look = {
   trousers: "#2a2a3a", trousersDark: "#1e1e2a", boots: "#2c1a0c", belt: "#e0be38", robe: true,
 };
 
-/** Roka at the trading post and Old Maro the guide, standing to greet the hero. */
-export function drawTownsfolk(ctx: CanvasRenderingContext2D, isMaro: boolean, cx: number, py: number, s: number, time: number) {
-  if (!isMaro) {
+const HESTA: Look = {
+  skin: "#e8b890", skinDark: "#c89a74", hair: "#7a3a1a",
+  tunic: ["#1f4a3a", "#2c6450", "#3e806a"], sleeve: "#2c6450", sleeveDark: "#1f4a3a",
+  trousers: "#1f4a3a", trousersDark: "#16362a", boots: "#2c1a0c", belt: "#2c1c11", buckle: "#ffd84b", robe: true,
+};
+const CAEL: Look = {
+  skin: "#f0caa6", skinDark: "#d4ac88", hair: "#6a5038",
+  tunic: ["#4a4038", "#665a4e", "#807264"], sleeve: "#665a4e", sleeveDark: "#4a4038",
+  trousers: "#4a4038", trousersDark: "#3a322a", boots: "#2c1a0c", belt: "#c8b080", robe: true,
+};
+
+/** Object tiles where each NPC stands. */
+const NPC_AT: Record<string, NpcId> = { M: "roka", P: "maro", K: "hesta", Q: "cael" };
+
+/** The townsfolk standing to greet the hero: Roka, Old Maro, Hesta and Brother Cael. */
+export function drawTownsfolk(ctx: CanvasRenderingContext2D, npc: NpcId, cx: number, py: number, s: number, time: number) {
+  if (npc === "roka") {
     drawFigure(ctx, ROKA, { dir: "down", walk: null, time, rear: [0.0, 0.58], hand: [0.02, 0.56] }, cx, py, s);
+    return;
+  }
+  if (npc === "hesta") {
+    drawFigure(ctx, HESTA, { dir: "down", walk: null, time: time + 400, rear: [0.02, 0.6], hand: [0.04, 0.58] }, cx, py, s);
+    return;
+  }
+  if (npc === "cael") {
+    // hands folded, a candle held before him
+    const out = drawFigure(ctx, CAEL, { dir: "down", walk: null, time: time + 1300, rear: [0.06, 0.5], hand: [0.08, 0.5] }, cx, py, s);
+    ctx.fillStyle = "#efe6cf";
+    ctx.fillRect(out.hand.x - s * 0.02, out.hand.y - s * 0.12, s * 0.04, s * 0.1);
+    ctx.fillStyle = "#ffcc4a";
+    ctx.beginPath();
+    ctx.ellipse(out.hand.x + Math.sin(time / 120) * s * 0.006, out.hand.y - s * 0.15, s * 0.016, s * 0.035, 0, 0, Math.PI * 2);
+    ctx.fill();
     return;
   }
   const out = drawFigure(ctx, MARO, {
@@ -1472,12 +1529,11 @@ export function drawTownsfolk(ctx: CanvasRenderingContext2D, isMaro: boolean, cx
 
 // --- Quest markers ------------------------------------------------------------
 // Where the quest-giving townsfolk stand: Roka at "M", Old Maro at "P".
-const NPC_TILES: { x: number; y: number; npc: "maro" | "roka" }[] = [];
+const NPC_TILES: { x: number; y: number; npc: NpcId }[] = [];
 for (let y = 0; y < MAP_H; y++) {
   for (let x = 0; x < MAP_W; x++) {
-    const o = objAt(x, y);
-    if (o === "M") NPC_TILES.push({ x, y, npc: "roka" });
-    else if (o === "P") NPC_TILES.push({ x, y, npc: "maro" });
+    const npc = NPC_AT[objAt(x, y)];
+    if (npc) NPC_TILES.push({ x, y, npc });
   }
 }
 
@@ -1631,6 +1687,66 @@ function drawPlayer64(
   drawHPBar(ctx, cx, py + s * 0.2, g.hp, g.maxHp, s);
 }
 
+// --- Waygate jump -------------------------------------------------------------
+// Leaving: a ring lights under the hero and a column of pale light rises as
+// they fade away. Arriving: the column is already there and dies down as the
+// hero fades back in.
+
+/** How far through a jump the hero is: their opacity and the beam's strength. */
+function warpState(g: GameState, time: number): { hero: number; beam: number } | null {
+  if (g.warp) {
+    const p = Math.min(1, (time - emote.warpOutAt) / WARP_MS);
+    return { hero: 1 - p * p, beam: Math.min(1, p * 1.6) };
+  }
+  const q = (time - emote.warpInAt) / WARP_MS;
+  if (q >= 0 && q < 1) return { hero: q, beam: 1 - q * q };
+  return null;
+}
+
+/** The ring on the ground (back pass) or the column of light and sparks (front pass). */
+function warpBeam(ctx: CanvasRenderingContext2D, cx: number, py: number, s: number, time: number, k: number, is64: boolean, back: boolean) {
+  if (k <= 0.01) return;
+  const foot = py + s * 0.86;
+  ctx.save();
+  if (back) {
+    ctx.globalAlpha = k;
+    ctx.strokeStyle = "rgba(170,235,255,0.9)";
+    ctx.lineWidth = Math.max(1.5, s * 0.04);
+    ctx.beginPath();
+    ctx.ellipse(cx, foot, s * (0.3 + 0.12 * k), s * (0.12 + 0.05 * k), 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+    return;
+  }
+  if (!is64) {
+    ctx.globalAlpha = 0.55 * k;
+    ctx.fillStyle = "#bff0ff";
+    ctx.fillRect(cx - s * 0.25, py - s * 0.8, s * 0.5, s * 1.66);
+    ctx.restore();
+    return;
+  }
+  ctx.globalCompositeOperation = "lighter";
+  const w = s * (0.22 + 0.16 * k);
+  const top = py - s * 1.6;
+  const beam = ctx.createLinearGradient(0, top, 0, foot);
+  beam.addColorStop(0, "rgba(160,230,255,0)");
+  beam.addColorStop(0.55, `rgba(170,235,255,${0.45 * k})`);
+  beam.addColorStop(1, `rgba(230,250,255,${0.7 * k})`);
+  ctx.fillStyle = beam;
+  ctx.beginPath();
+  ctx.ellipse(cx, (top + foot) / 2, w, (foot - top) / 2, 0, 0, Math.PI * 2);
+  ctx.fill();
+  // motes spiralling up the column
+  for (let i = 0; i < 9; i++) {
+    const ph = (time / 700 + i / 9) % 1;
+    const a = ph * Math.PI * 4 + i;
+    ctx.fillStyle = `rgba(220,248,255,${k * (1 - ph)})`;
+    const r = Math.max(1.2, s * 0.035);
+    ctx.fillRect(cx + Math.cos(a) * w * 0.8 - r / 2, foot - ph * (foot - top) - r / 2, r, r);
+  }
+  ctx.restore();
+}
+
 // --- Main Render Master Engine ---
 export function render(
   ctx: CanvasRenderingContext2D,
@@ -1664,7 +1780,7 @@ export function render(
   const act = g.action;
   if (act?.kind === "combat") {
     const foes: { id: number; x: number; y: number }[] =
-      act.targetKind === "cow" ? g.cows : act.targetKind === "chicken" ? g.chickens ?? [] : g.goblins ?? [];
+      act.targetKind === "cow" ? g.cows : act.targetKind === "chicken" ? g.chickens ?? [] : g.foes ?? [];
     const foe = foes.find((f) => f.id === act.targetId);
     if (foe) aim = { x: foe.x * effTile - sx + effTile / 2, y: foe.y * effTile - sy + effTile / 2 };
   } else if (act) {
@@ -1678,12 +1794,23 @@ export function render(
   if (working && aim && Math.hypot(aim.x - heroCx, aim.y - heroCy) > effTile * 0.3) heroDir = dirFrom(aim.x - heroCx, aim.y - heroCy, heroDir);
   const facing = heroDir === "left" ? -1 : 1;
 
+  // The surface and the crypt below share the grid but never the screen:
+  // underground, the surface is darkness; above, the crypt's band is mountain.
+  const under = isUnderground(hx, hy);
+  const hidden = (x: number, y: number) => isUnderground(x, y) !== under;
+
   // 1. Draw Terrain Layer
   for (let y = ty0; y <= ty1; y++) {
     for (let x = tx0; x <= tx1; x++) {
-      const gch = groundAt(x, y);
       const px = x * effTile - sx;
       const py = y * effTile - sy;
+      if (hidden(x, y) && under) {
+        ctx.fillStyle = "#050507";
+        ctx.fillRect(px, py, effTile + 1, effTile + 1);
+        continue;
+      }
+      const gch = hidden(x, y) ? "m" : groundAt(x, y);
+      if (drawVillageGround(ctx, gch, x, y, px, py, effTile, is64)) continue;
       if (is64) render64BitGround(ctx, gch, x, y, px, py, effTile, time);
       else render8BitGround(ctx, gch, x, y, px, py, effTile);
     }
@@ -1694,9 +1821,12 @@ export function render(
     for (let x = tx0; x <= tx1; x++) {
       const px = x * effTile - sx;
       const py = y * effTile - sy;
-      
+      if (hidden(x, y)) continue;
+
       const och = objAt(x, y);
-      if (och) {
+      if (och && drawVillageObject(ctx, och, x, y, px, py, effTile, time, is64)) {
+        // drawn
+      } else if (och) {
         const key = `${x},${y}`;
         const dep = !!(g.depleted[key] && time < g.depleted[key]);
         if (is64) drawObject64(ctx, och, x, y, px, py, effTile, time, dep);
@@ -1753,15 +1883,15 @@ export function render(
         }
       }
 
-      // Draw tribal goblins on this row
-      if (g.goblins) {
-        for (const gb of g.goblins) {
+      // Draw goblins and the restless dead on this row
+      if (g.foes) {
+        for (const gb of g.foes) {
           if (Math.round(gb.y) === y && Math.round(gb.x) === x) {
             const gbx = gb.x * effTile - sx + effTile / 2;
             const gby = gb.y * effTile - sy + effTile / 2;
-            if (is64) drawGoblin64(ctx, gb, gbx, gby, effTile, time, g);
+            if (is64) drawFoe64(ctx, gb, gbx, gby, effTile, time, g);
             else if (gb.hp > 0) {
-              ctx.fillStyle = "#22c55e";
+              ctx.fillStyle = gb.foe === "restless" || gb.foe === "warden" ? "#d8d0b8" : "#22c55e";
               ctx.fillRect(gbx - effTile * 0.3, gby - effTile * 0.3, effTile * 0.6, effTile * 0.6);
             }
           }
@@ -1772,15 +1902,24 @@ export function render(
       if (Math.round(hy) === y && Math.round(hx) === x) {
         const ppx = hx * effTile - sx;
         const ppy = hy * effTile - sy;
+        const warp = warpState(g, time);
+        if (warp) warpBeam(ctx, ppx + effTile / 2, ppy, effTile, time, warp.beam, is64, true);
+        ctx.globalAlpha = warp ? warp.hero : 1;
         if (is64) drawPlayer64(ctx, g, ppx, ppy, effTile, time, heroDir, aim);
         else {
           ctx.fillStyle = "#ff0";
           ctx.fillRect(ppx + effTile * 0.2, ppy + effTile * 0.2, effTile * 0.6, effTile * 0.6);
           drawPlayer8Tool(ctx, g, ppx, ppy, effTile, time, facing);
         }
+        ctx.globalAlpha = 1;
+        if (warp) warpBeam(ctx, ppx + effTile / 2, ppy, effTile, time, warp.beam, is64, false);
       }
     }
   }
+
+  // 2a. Roofs over the buildings, the hero's own fading away
+  if (!under) drawRoofs(ctx, hx, hy, sx, sy, effTile, w, h, time, is64, (x, y) => spawnParticles(x, y, 1, "rgba(200,200,205,0.7)", 0.35));
+
 
   // 2b. Impact bursts: sawdust, ore sparks, anvil sparks, splashes — on the blow
   if (is64) workImpacts(g, working ? jobOf(g) : null, aim, effTile);
@@ -1807,7 +1946,7 @@ export function render(
 
   // 3b. Quest markers over Maro's and Roka's heads, drawn above everything else in the world
   for (const n of NPC_TILES) {
-    if (n.x < tx0 || n.x > tx1 || n.y < ty0 || n.y > ty1) continue;
+    if (n.x < tx0 || n.x > tx1 || n.y < ty0 || n.y > ty1 || hidden(n.x, n.y)) continue;
     const m = npcMarker(g, n.npc);
     if (m) drawQuestMarker(ctx, m, n.x * effTile + effTile / 2 - sx, n.y * effTile - sy, effTile, time, is64);
   }
@@ -1850,7 +1989,8 @@ export function render(
   // additive "lighter" pass that carves warm haloes around every fire on screen.
   if (is64) {
     const cyc = dayCycle(time); // 0..1, 0 = deep night, 1 = midday
-    const night = 0.06 + (1 - cyc) * 0.28;
+    // The crypt is always dark
+    const night = under ? 0.62 : 0.06 + (1 - cyc) * 0.28;
 
     // A) Cool night wash across the whole viewport
     ctx.fillStyle = `rgba(18, 24, 52, ${night})`;
@@ -1862,20 +2002,37 @@ export function render(
     ctx.globalCompositeOperation = "lighter";
     for (let y = ty0; y <= ty1; y++) {
       for (let x = tx0; x <= tx1; x++) {
+        if (hidden(x, y)) continue;
         const och = objAt(x, y);
+        if (isCandleLight(och)) {
+          const lx = x * effTile - sx + effTile / 2, ly = y * effTile - sy + effTile * 0.2;
+          const radius = effTile * 2.4 * (0.92 + 0.08 * Math.sin(time / 130 + x * 7 + y));
+          const glow = ctx.createRadialGradient(lx, ly, effTile * 0.05, lx, ly, radius);
+          glow.addColorStop(0, `rgba(255, 200, 120, ${0.3 + night * 0.4})`);
+          glow.addColorStop(0.5, `rgba(255, 140, 50, ${0.12 + night * 0.15})`);
+          glow.addColorStop(1, "rgba(80, 20, 0, 0)");
+          ctx.fillStyle = glow;
+          ctx.beginPath();
+          ctx.arc(lx, ly, radius, 0, Math.PI * 2);
+          ctx.fill();
+          continue;
+        }
         if (och !== "F" && och !== "*") continue;
         const key = `${x},${y}`;
         if (g.depleted[key] && time < g.depleted[key]) continue;
+        // The square's 2×2 bonfire throws one big light from its centre
+        const big = bonfireTile(x, y);
+        if (big === "part") continue;
 
         // Position matches where the sprite actually renders its flame
-        const lx = x * effTile - sx + effTile / 2;
-        const ly = y * effTile - sy + (och === "F" ? effTile * 0.7 : effTile * 0.55);
+        const lx = big ? x * effTile - sx : x * effTile - sx + effTile / 2;
+        const ly = big ? y * effTile - sy : y * effTile - sy + (och === "F" ? effTile * 0.7 : effTile * 0.55);
 
         // Per-source flicker (deterministic per tile so two forges don't sync)
         const seed = x * 91 + y * 137;
         const flicker = 0.85 + 0.15 * Math.sin(time / (och === "F" ? 180 : 120) + seed);
-        const radius = (och === "F" ? effTile * 2.6 : effTile * 2.0) * flicker;
-        const intensity = (och === "F" ? 0.55 : 0.45) * (0.6 + night * 1.4); // brighter at night
+        const radius = (big ? effTile * 4 : och === "F" ? effTile * 2.6 : effTile * 2.0) * flicker;
+        const intensity = (big ? 0.6 : och === "F" ? 0.55 : 0.45) * (0.6 + night * 1.4); // brighter at night
 
         const glow = ctx.createRadialGradient(lx, ly, effTile * 0.08, lx, ly, radius);
         glow.addColorStop(0,    `rgba(255, 210, 140, ${intensity})`);
@@ -1887,6 +2044,16 @@ export function render(
         ctx.arc(lx, ly, radius, 0, Math.PI * 2);
         ctx.fill();
       }
+    }
+    if (under) {
+      // The hero's own small circle of light in the crypt
+      const lg = ctx.createRadialGradient(heroCx, heroCy, effTile * 0.2, heroCx, heroCy, effTile * 3.2);
+      lg.addColorStop(0, "rgba(150, 160, 190, 0.35)");
+      lg.addColorStop(1, "rgba(0, 0, 0, 0)");
+      ctx.fillStyle = lg;
+      ctx.beginPath();
+      ctx.arc(heroCx, heroCy, effTile * 3.2, 0, Math.PI * 2);
+      ctx.fill();
     }
     ctx.restore();
 

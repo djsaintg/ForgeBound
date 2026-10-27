@@ -1,3 +1,5 @@
+import type { GateId, HumanoidFoe, Pen } from "./map";
+
 export type SkillId =
   | "attack" | "hitpoints" | "mining" | "strength" | "agility" | "smithing" | "defence"
   | "herblore" | "fishing" | "ranged" | "crafting" | "cooking" | "prayer" | "woodcutting"
@@ -133,8 +135,12 @@ export interface ChickenEnt {
   diedAt?: number;
 }
 
-export interface GoblinEnt {
+/** Anything that fights back on two legs: Grublin Gully's goblins and the crypt's dead. */
+export interface FoeEnt {
   id: number;
+  foe: HumanoidFoe;
+  /** Where it patrols. */
+  home: Pen;
   x: number;
   y: number;
   dx: number;
@@ -160,7 +166,7 @@ export interface GroundItem {
 export type Action =
   | { kind: "gather"; x: number; y: number; res: ResKey; progress: number; cycle: number }
   | { kind: "station"; x: number; y: number; recipe: RecipeId; progress: number; cycle: number }
-  | { kind: "combat"; targetKind: "cow" | "chicken" | "goblin"; targetId: number; progress: number; cycle: number };
+  | { kind: "combat"; targetKind: "cow" | "chicken" | "foe"; targetId: number; progress: number; cycle: number };
 
 export interface InvSlot {
   item: ItemId;
@@ -188,7 +194,7 @@ export interface GameState {
   y: number;
   path: { x: number; y: number }[];
   action: Action | null;
-  pendingStation: { kind: "craft" | "bank" | "shop" | "talk" | "pray"; station?: StationId; x: number; y: number } | null;
+  pendingStation: { kind: "craft" | "bank" | "shop" | "talk" | "pray" | "use"; station?: StationId; x: number; y: number } | null;
   stationUI: { station: StationId; x: number; y: number } | null;
   depleted: Record<string, number>;
   chat: ChatMsg[];
@@ -200,7 +206,7 @@ export interface GameState {
   settingsOpen: boolean;
   cows: CowEnt[];
   chickens: ChickenEnt[];
-  goblins: GoblinEnt[];
+  foes: FoeEnt[];
   groundItems: GroundItem[];
   counters: { gathered: number; made: number; kills: number };
   // Gamma v0.3.0 Enhancements
@@ -230,14 +236,22 @@ export interface GameState {
   supplyDay: Partial<Record<SupplyId, string>>;
   /** The conversation on screen, if any. */
   dialogue: Dialogue | null;
+  // The Wider Realm v0.5.0
+  /** Waygates the hero has attuned to. */
+  gates: GateId[];
+  /** The waygate whose travel window is open. */
+  gateOpen: GateId | null;
+  /** A waygate jump under way: where to, and when the hero arrives. */
+  warp: { x: number; y: number; at: number } | null;
 }
 
 export type QuestId =
   | "meat_for_the_table" | "north_pasture" | "grublin_gully"
   | "smiths_first_lesson" | "plate_and_hammer" | "an_iron_will"
-  | "fishers_patience";
+  | "fishers_patience"
+  | "restless_crypt";
 
-export type NpcId = "maro" | "roka";
+export type NpcId = "maro" | "roka" | "hesta" | "cael";
 
 /** Roka's four Supply Runs. */
 export type SupplyId = "eggs" | "feathers" | "chicken" | "logs";
@@ -254,7 +268,7 @@ export interface QuestProgress {
 export type QuestEvent =
   | { kind: "make"; item: ItemId }      // smelted, smithed or cooked
   | { kind: "gather"; item: ItemId }    // chopped, mined or caught
-  | { kind: "kill"; foe: "cow" | "chicken" | "goblin" | "brigand" }
+  | { kind: "kill"; foe: "cow" | "chicken" | HumanoidFoe }
   | { kind: "bury" }
   | { kind: "eat"; item: ItemId };
 
@@ -274,7 +288,7 @@ export interface Dialogue {
   options: DialogueOption[];
 }
 
-export type BlessingId = "stoneskin" | "ox_might" | "mending" | "clear_eye";
+export type BlessingId = "stoneskin" | "ox_might" | "mending" | "clear_eye" | "spirit_ward";
 
 export interface BlessingDef {
   id: BlessingId;
@@ -285,6 +299,8 @@ export interface BlessingDef {
   effect: string;
   /** Milliseconds per prayer point drained while it's on. */
   drainMs: number;
+  /** Learned by finishing this quest, not just by levelling. */
+  quest?: QuestId;
 }
 
 /** One line of a right-click menu. The first entry is what left-click does. */

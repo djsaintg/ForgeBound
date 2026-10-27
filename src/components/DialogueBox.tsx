@@ -20,7 +20,7 @@ function Portrait({ npc }: { npc: NpcId }) {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, size, size);
       // A figure drawn at ~2.4 tiles tall, shifted up so the head and chest fill the frame
-      drawTownsfolk(ctx, npc === "maro", size / 2, 6, 120, t);
+      drawTownsfolk(ctx, npc, size / 2, 6, 120, t);
     };
     raf = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(raf);

@@ -57,7 +57,9 @@ export function toolFor(g: GameState, job: Job | null): { shape: GearShape; meta
 }
 
 /** Set when bones are buried; the hero kneels for a moment. */
-export const emote = { buryAt: -1e9 };
+export const emote = { buryAt: -1e9, warpOutAt: -1e9, warpInAt: -1e9 };
+/** A waygate jump: the hero fades out into a column of light, then fades back in at the far gate. */
+export const WARP_MS = 650;
 export const BURY_MS = 700;
 
 /** Day/night position, 0 = deep night, 1 = midday. Shared by the lighting pass and the soundscape. */

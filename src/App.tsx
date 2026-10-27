@@ -6,7 +6,7 @@ import { EventFeed } from "./components/EventFeed";
 import { XpOrbs } from "./components/XpOrbs";
 import { ActionBanner } from "./components/ActionBanner";
 import { SidePanels } from "./components/SidePanels";
-import { BankModal, ShopModal, SkillGuideModal, StationModal, SettingsModal } from "./components/Modals";
+import { BankModal, GateModal, ShopModal, SkillGuideModal, StationModal, SettingsModal } from "./components/Modals";
 import { ContextMenuProvider } from "./components/ContextMenu";
 import { DialogueBox } from "./components/DialogueBox";
 import { useSlotDropAnywhere } from "./components/SlotDrag";
@@ -212,6 +212,7 @@ function GameScreen({ name, cont, onExit }: { name: string; cont: boolean; onExi
         <ShopModal api={api} g={g} />
         <SettingsModal api={api} g={g} />
         <SkillGuideModal api={api} g={g} />
+        <GateModal api={api} g={g} />
         <LevelUpOverlay api={api} g={g} />
       </div>
 

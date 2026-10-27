@@ -1,5 +1,5 @@
 /**
- * The score: three original area themes played by a tiny sequencer through
+ * The score: original area themes played by a tiny sequencer through
  * synthesized instruments, crossfading as the hero moves between zones, plus
  * short stingers for level-ups, quest completion and death.
  *
@@ -235,7 +235,7 @@ function play(b: Buses, out: AudioNode, inst: Inst, m: number, t: number, dur: n
 
 // ---------------------------------------------------------------- themes --
 
-export type ThemeId = "title" | "vale" | "wilds" | "gully";
+export type ThemeId = "title" | "vale" | "wilds" | "gully" | "chapel" | "crypt";
 
 interface ThemeDef {
   id: ThemeId;
@@ -250,7 +250,7 @@ interface ThemeDef {
   double?: "flute" | "horn";
   /** Play the melody every loop instead of resting every other time. */
   alwaysLead?: boolean;
-  /** Harp (or lute) pattern: chord-tone indices per eighth note. 0 root, 1 third, 2 fifth, 3 octave, 4 tenth, 5 twelfth. */
+  /** Harp (or lute) pattern: chord-tone indices per eighth note. 0 root, 1 third, 2 fifth, 3 octave, 4 tenth, 5 twelfth; -1 rests. */
   arp: number[];
   arpInst: "harp" | "pluck";
   /** Bass hits as [beat, chord-tone index, length in beats]. */
@@ -341,6 +341,44 @@ const THEMES: Record<ThemeId, ThemeDef> = {
     drums: [[0, "drum", 0.55], [1.5, "drum", 0.3], [2, "drum", 0.45], [0, "shaker", 0.2], [0.5, "shaker", 0.15], [1, "shaker", 0.2], [1.5, "shaker", 0.15], [2, "shaker", 0.2], [2.5, "shaker", 0.15], [3, "shaker", 0.2], [3.5, "shaker", 0.15]],
     padCutoff: 650,
   },
+  // Greyhallow: a slow, open hymn-like air over a sparse harp, no drums.
+  chapel: {
+    id: "chapel",
+    title: "Bells of Greyhallow",
+    bpm: 60,
+    beats: 4,
+    chords: ["F", "C", "Dm", "Bb", "F", "Am", "Bb", "C", "Dm", "Am", "Bb", "F", "Gm", "C", "F", "F"],
+    melody: `
+      A4:2 C5:1 A4:1 | G4:3 E4:1 | F4:1 A4:1 D5:2 | D5:1.5 C5:.5 Bb4:2 |
+      A4:2 F4:1 A4:1 | C5:2 E5:2 | D5:1 C5:1 Bb4:1 D5:1 | C5:4 |
+      D5:2 F5:1 E5:1 | C5:3 A4:1 | Bb4:1 D5:1 F5:2 | C5:2 A4:2 |
+      Bb4:1.5 A4:.5 G4:2 | E4:2 G4:1 Bb4:1 | A4:2 G4:1 E4:1 | F4:4`,
+    lead: "flute",
+    arp: [0, 2, 3, 2, 4, 2, 3, 2],
+    arpInst: "harp",
+    bass: [[0, 0, 4]],
+    drums: [],
+    padCutoff: 1000,
+  },
+  // The crypt: low, slow and cold. A dark flute line, a lone muffled drum.
+  crypt: {
+    id: "crypt",
+    title: "Beneath the Stones",
+    bpm: 58,
+    beats: 4,
+    chords: ["Dm", "Dm", "Bb", "A", "Dm", "Gm", "Bb", "A", "Gm", "Dm", "Eb", "A", "Dm", "Bb", "Gm", "A"],
+    melody: `
+      D4:3 F4:1 | E4:2 D4:2 | F4:2 Bb4:1 A4:1 | A4:2 G4:1 E4:1 |
+      D4:2 A4:2 | Bb4:3 A4:1 | G4:1 F4:1 D4:2 | E4:3 C#4:1 |
+      D5:2 Bb4:2 | A4:3 F4:1 | G4:2 Eb4:2 | E4:2 C#4:2 |
+      D4:1 F4:1 A4:2 | Bb4:1 A4:1 F4:2 | G4:2 Bb4:1 A4:1 | A4:4`,
+    lead: "flute",
+    arp: [0, -1, 2, -1, 3, -1, 2, -1],
+    arpInst: "pluck",
+    bass: [[0, 0, 4]],
+    drums: [[0, "drum", 0.3]],
+    padCutoff: 500,
+  },
 };
 
 interface NoteEvent { beat: number; len: number; inst: Inst; m: number; vel: number; lead: boolean }
@@ -354,7 +392,8 @@ function compile(th: ThemeDef): NoteEvent[] {
     const at = bar * th.beats;
     // pad: the chord an octave up, held for the bar
     for (const t of tones) ev.push({ beat: at, len: th.beats, inst: "pad", m: t + 12, vel: 0.8, lead: false });
-    th.arp.forEach((d, i) => ev.push({ beat: at + i * 0.5, len: 0.5, inst: th.arpInst, m: deg(d) + (th.arpInst === "pluck" ? -12 : 0), vel: i === 0 ? 0.9 : 0.65, lead: false }));
+    // a negative index in the pattern is a rest
+    th.arp.forEach((d, i) => { if (d >= 0) ev.push({ beat: at + i * 0.5, len: 0.5, inst: th.arpInst, m: deg(d) + (th.arpInst === "pluck" ? -12 : 0), vel: i === 0 ? 0.9 : 0.65, lead: false }); });
     for (const [b, d, len] of th.bass) ev.push({ beat: at + b, len, inst: "bass", m: deg(d) - 12, vel: 0.9, lead: false });
     for (const [b, inst, vel] of th.drums) ev.push({ beat: at + b, len: 0.5, inst, m: 0, vel, lead: false });
   });
@@ -446,6 +485,8 @@ export function themeFor(x: number, y: number): ThemeId | null {
   const name = tileName(x, y);
   if (name === "Grublin Gully" || name === "Keldrek Mine") return "gully";
   if (name === "the Westwood" || name === "the riverbank" || name === "the river") return "wilds";
+  if (name === "the Greyhallow Crypt" || name === "the Crypt Sanctum") return "crypt";
+  if (name.startsWith("Greyhallow")) return "chapel";
   if (name === "the mountain range") return null; // keep whatever is playing
   return "vale";
 }
